@@ -4,9 +4,18 @@ A standalone, single-purpose web application designed to replace a manual Excel-
 
 ---
 
-## 1. User Interface Design & Aesthetics
+## 1. File Structure & Component Separation
 
-### Theme & Layout System (Linear-Style)
+To ensure clean maintenance, debugging, and testing, the application is strictly partitioned into three separate files:
+1. **[index.html](file:///C:/Users/traps/Documents/antigravity/blissful-turing/index.html)**: Contains the semantic HTML structure, routing containers for the 5 SPA sections, modal placeholders, and CDN inclusions. No raw Javascript logic is allowed inside this file.
+2. **[styles.css](file:///C:/Users/traps/Documents/antigravity/blissful-turing/styles.css)**: Holds the CSS custom variables, theme rules (light/dark toggle), structural layout (sidebar, content container), visual card and table design, and print stylesheet directive (`@media print`).
+3. **[app.js](file:///C:/Users/traps/Documents/antigravity/blissful-turing/app.js)**: Contains all functional Javascript: state management, event listeners (using event delegation), localStorage persistence, SheetJS and html2pdf.js integration, email drafting algorithms, and dynamic DOM render operations.
+
+---
+
+## 2. Design System & Aesthetics (Linear-Style)
+
+### Theme & Layout System
 - **Overall Style**: Sleek, developer-tool-oriented design with clean borders, high information density, and interactive animations.
 - **Sidebar**: Fixed left sidebar (240px wide) styled in a dark theme (`#18181b`/zinc-900) containing the application logo, the editable Tender Name, and the 5 navigation sections. It collapses to icons-only or a hamburger drawer on screens under 900px wide.
 - **Color Palette (CSS Variables)**:
@@ -16,16 +25,17 @@ A standalone, single-purpose web application designed to replace a manual Excel-
   - `--text-primary`: Dark Gray `#09090b` (Light Mode) / Cool White `#fafafa` (Dark Mode)
   - `--text-secondary`: Muted Gray `#71717a` (Light Mode) / Muted Slate `#a1a1aa` (Dark Mode)
   - `--accent`: Brand Blue/Indigo `#0071e3` or `#4f46e5`
-  - `--success`: Green `#22c55e` (used sparingly for "Submitted" status pills)
-  - `--danger`: Red `#ef4444` (used sparingly for "Not Submitted" status pills)
-  - `--warning`: Muted Gray/Amber `#a1a1aa` or `#eab308` (used for "Not Applicable" or pending counts)
+  - `--success`: Green `#22c55e` (used strictly for "Submitted" status pills)
+  - `--danger`: Red `#ef4444` (used strictly for "Not Submitted" status pills)
+  - `--warning`: Amber `#eab308` (used strictly for pending/urgent counts on Overview cards)
+  - `--neutral`: Slate Gray `#a1a1aa` (used strictly for "Not Applicable" status pills and neutral indicators)
 - **Dark Mode Toggle**: Located in the top header bar, allowing instant transition by appending/removing a `.dark` class to the `<html>` or `<body>` element.
 
 ---
 
-## 2. Component Layout & Application Sections
+## 3. UI Sections (Single-Page Application)
 
-The application is structured as a Single-Page Application (SPA) divided into 5 navigation sections. Only one section is visible at any given time.
+Only one section is visible at any given time. Toggle classes manage section visibility.
 
 ### Section 1: Overview (Landing Screen)
 - **Key Metrics Cards**:
@@ -65,7 +75,7 @@ The application is structured as a Single-Page Application (SPA) divided into 5 
 - **Table Cell Control**: A 3-way segmented button:
   - `Sub` (Green when active)
   - `Pend` (Red when active)
-  - `N/A` (Muted Zinc when active)
+  - `N/A` (Muted Slate when active)
 - **Grid Add Tools**:
   - `+ Add Checklist Item` button: Prompts for name, appends a row, and sets all bidders' statuses for it to `not_submitted`.
   - `+ Add Bidder` button: Compact inline popup form (name and email only) for fast data entry.
@@ -89,7 +99,7 @@ The application is structured as a Single-Page Application (SPA) divided into 5 
 
 ---
 
-## 3. Data Architecture & Persistence
+## 4. Data Architecture, Persistence, and Export Conversion
 
 ### Data Model
 ```js
@@ -114,7 +124,7 @@ state = {
 
 ### Persistence Logic
 - **Storage**: JSON serialized structure in `localStorage`.
-- **Auto-Save**: Triggered on every state change, debounced at 300ms to avoid performance bottlenecks.
+- **Auto-Save**: Triggered on every state change, debounced at 300ms.
 - **Seeding**: On first load, if no `localStorage` is found, seed with 15 default checklist items:
   1. DECLARATION ON BANNING or HOLIDAY LISTING
   2. NIL DEVIATION
@@ -136,11 +146,33 @@ state = {
 - **Item Renaming**: When editing an item name, a function traverses all bidders and translates their `statuses[oldName]` key to `statuses[newName]`, then deletes the old key.
 - **Item Deletion**: When an item is removed, the corresponding key is deleted from each bidder's `statuses` object to prevent memory bloat.
 
+### Export Label Conversion Rules
+To ensure professional-grade exports and reminders, cell status values (`submitted`, `not_submitted`, `not_applicable`) and cell abbreviations (`Sub`, `Pend`, `N/A`) **must be expanded to their full words** when generating data for external consumption:
+1. **Excel Export**: The 2D cell grid passed to SheetJS must map the values as:
+   - `'submitted'` $\rightarrow$ `"Submitted"`
+   - `'not_submitted'` $\rightarrow$ `"Not Submitted"`
+   - `'not_applicable'` $\rightarrow$ `"Not Applicable"`
+2. **PDF Export**: The print-only matrix table must show full-length statuses or cleanly styled pills displaying `"Submitted"`, `"Not Submitted"`, and `"Not Applicable"`.
+3. **Email Draft Text**: The mail body templates must expand items into the user-friendly phrase (e.g., `You have not submitted "[ITEM NAME]"`). Bidders with zero pending items should not be available for drafting.
+
 ---
 
-## 4. Implementation details & Quality Gates
+## 5. Verification Plan
 
-- **Event Delegation**: Rather than binding event listeners to thousands of cell buttons, we attach single event listeners to the matrix table's `<tbody>` and `<thead>` using `e.target.closest('[data-action]')` checks.
-- **Robust Error Handling**: Wrap all `localStorage` access and export libraries in `try/catch` statements, displaying error messages via a custom toast notification system.
-- **Regex Email Validation**: Enforces standard RFC 5322 format checking: `/^[^\s@]+@[^\s@]+\.[^\s@]+$/`.
-- **Print stylesheet**: CSS `@media print` directives set margins, hide sidebars/headers/buttons, override color states to high-contrast monochrome, and disable position sticky to ensure correct pagination.
+The application must pass the following 15 verification checks before completion. The implementing engineer must run through each scenario and document the results:
+
+1. **Fresh Load Test**: Clear `localStorage`, reload the page. The app must load with 0 bidders and the 15 default checklist items seeded. No console errors or warnings.
+2. **Bidder Creation**: Add a bidder using the Form. Verify that the bidder instantly appears in the Catalogue and the Matrix, with all 15 item statuses defaulted to `not_submitted` (Pending).
+3. **Invalid Email Handling**: Input an invalid email (e.g. `test@invalid`) in the form or inline editing modal. Verify that an inline validation error is shown and submission is blocked, or the "Draft Email" button is disabled for them in the Catalogue/Matrix with an descriptive message.
+4. **Add Checklist Item**: Click "+ Add Checklist Item", input a new document name. Verify that a new row is appended to the Matrix for all bidders, defaulted to `not_submitted`.
+5. **Rename Checklist Item**: Rename an existing checklist item. Confirm that status values for that item are retained for all bidders under the new key name.
+6. **Stat Card Recalculation**: Toggle statuses in the Matrix (e.g. set some to Submitted and others to Not Applicable). Confirm that the Overall Submission Rate (%) and other stats in the Overview section update instantly and accurately.
+7. **Bulk N/A Action**: Click "Mark all Not Applicable" on a bidder column header. Confirm all items for that bidder update to `not_applicable`. If they had pending items, verify that the "Draft Email" button is now disabled (since they have no missing documents left).
+8. **Delete Bidder**: Select "Delete Bidder" in the Catalogue. Ensure a confirmation dialog appears. After approval, verify they are removed from both Catalogue and Matrix, and no orphaned data remains in state.
+9. **Single Draft Email**: Click "Draft Email" on a bidder card. Verify it routes to the Mail tab, pre-selects the bidder, pulls their correct email, and generates the list of missing items exactly as a bulleted/listed body text.
+10. **Draft All View**: Click "Draft All" in the Mail tab. Ensure a stacked layout shows draft templates for *all* bidders with pending documents, and hides bidders with no pending documents.
+11. **Excel Export Validity**: Click "Download as Excel". Open the generated `.xlsx` file. Ensure that row 0 contains header names (`Checklist Item`, `Bidder A`, `Bidder B`), and columns contain full names like `"Submitted"`, `"Not Submitted"`, and `"Not Applicable"`.
+12. **PDF Export Layout**: Click "Download as PDF". Ensure the matrix displays in landscape mode, margins are neat, the header contains the Tender Name and today's date, and no columns are chopped off.
+13. **Print Layout**: Run the browser print command (Ctrl+P). The print preview must exclude the sidebar, buttons, and headers, and print the Checklist Matrix table flat and paginated nicely across sheets without sticky artifacts.
+14. **State Persistence**: Perform several changes (add bidders, change statuses), then refresh the browser. Confirm that the state is fully recovered from `localStorage`.
+15. **Dark Mode Integrity**: Toggle Dark Mode. Check that the sidebar, overview cards, catalogue cards, matrix buttons, edit forms, and mail drafting area all transition to their dark colors cleanly with no white flashes or unreadable text contrasts.
