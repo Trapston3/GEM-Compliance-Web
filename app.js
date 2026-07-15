@@ -739,9 +739,12 @@ function renderMatrix() {
           <span class="th-bidder-name" title="${escapeHTML(b.name)}">${escapeHTML(b.name)}</span>
           <span class="th-bidder-email">${escapeHTML(b.email)}</span>
           <div class="th-bidder-actions">
-            <button class="icon-btn" onclick="openEditModal('${b.id}')" title="Edit Bidder">✏️</button>
-            <button class="icon-btn icon-btn-danger" onclick="bulkMarkNA('${b.id}')" title="Mark all N/A">🚫</button>
-            <button class="icon-btn icon-btn-danger" onclick="openDeleteConfirm('${b.id}')" title="Delete Bidder">🗑️</button>
+            <button class="icon-btn" onclick="openEditModal('${b.id}')" title="Edit Bidder">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/></svg>
+            </button>
+            <button class="icon-btn icon-btn-danger" onclick="openDeleteConfirm('${b.id}')" title="Delete Bidder">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            </button>
           </div>
         </div>
       </th>
@@ -762,8 +765,15 @@ function renderMatrix() {
           <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
             <span class="item-name-text" title="${escapeHTML(item)}">${escapeHTML(item)}</span>
             <div style="display:flex; gap:2px; flex-shrink:0;">
-              <button class="icon-btn" onclick="renameChecklistItem('${escapeHTML(item)}')" title="Rename item">✏️</button>
-              <button class="icon-btn icon-btn-danger" onclick="deleteChecklistItem('${escapeHTML(item)}')" title="Delete item">🗑️</button>
+              <button class="icon-btn" onclick="renameChecklistItem('${escapeHTML(item)}')" title="Rename item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/></svg>
+              </button>
+              <button class="icon-btn icon-btn-danger" onclick="bulkMarkItemNA('${escapeHTML(item)}')" title="Mark all N/A">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+              </button>
+              <button class="icon-btn icon-btn-danger" onclick="deleteChecklistItem('${escapeHTML(item)}')" title="Delete item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              </button>
             </div>
           </div>
         </td>
@@ -821,17 +831,15 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // Action methods
-window.bulkMarkNA = function(bidderId) {
-  const bidder = state.bidders.find(b => b.id === bidderId);
-  if (bidder) {
-    state.checklistItems.forEach(item => {
-      bidder.statuses[item] = 'not_applicable';
-    });
-    saveStateToStorage();
-    showToast(`Marked all documents N/A for "${bidder.name}".`);
-    renderMatrix();
-  }
+window.bulkMarkItemNA = function(itemName) {
+  state.bidders.forEach(b => {
+    b.statuses[itemName] = 'not_applicable';
+  });
+  saveStateToStorage();
+  showToast(`Marked checklist item "${itemName}" as N/A for all bidders.`);
+  renderMatrix();
 };
+
 
 // ===== SECTION 4.5: CHECKLIST MATRIX INLINE MUTATIONS =====
 window.promptAddChecklistItem = function() {
