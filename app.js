@@ -192,3 +192,130 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initial render
   navigateToSection("overview-section");
 });
+
+// ===== SECTION 1: OVERVIEW DASHBOARD RENDERER =====
+function renderOverview() {
+  const statsContainer = document.getElementById("overview-stats-grid");
+  const distBar = document.getElementById("overview-dist-bar");
+  const distLabels = document.getElementById("overview-dist-labels");
+  const followUpList = document.getElementById("overview-follow-up-list");
+  
+  if (!statsContainer || !distBar || !distLabels || !followUpList) return;
+
+  const totalBidders = state.bidders.length;
+  const totalItems = state.checklistItems.length;
+  
+  // Status metrics counters
+  let countSub = 0;
+  let countPend = 0;
+  let countNa = 0;
+
+  // List of bidders with details
+  const pendingBiddersList = [];
+
+  state.bidders.forEach(b => {
+    let bPending = 0;
+    state.checklistItems.forEach(item => {
+      const status = b.statuses[item] || 'not_submitted';
+      if (status === 'submitted') countSub++;
+      else if (status === 'not_applicable') countNa++;
+      else {
+        countPend++;
+        bPending++;
+      }
+    });
+    if (bPending > 0) {
+      pendingBiddersList.push({ bidder: b, pendingCount: bPending });
+    }
+  });
+
+  // Calculations
+  const totalPossiblePoints = (totalBidders * totalItems) - countNa;
+  const submissionRate = totalPossiblePoints > 0 ? ((countSub / totalPossiblePoints) * 100).toFixed(1) : "0.0";
+  const pendingBiddersCount = pendingBiddersList.length;
+
+  // 1. Render Stat Cards
+  statsContainer.innerHTML = `
+    <div class="stat-card">
+      <span class="stat-label">Total Bidders</span>
+      <span class="stat-value">${totalBidders}</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Total Checklist Items</span>
+      <span class="stat-value">${totalItems}</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Overall Submission Rate</span>
+      <span class="stat-value success-text">${submissionRate}%</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Bidders with Pending Items</span>
+      <span class="stat-value ${pendingBiddersCount > 0 ? 'warning-text' : ''}">${pendingBiddersCount}</span>
+    </div>
+  `;
+
+  // 2. Render Distribution Chart
+  const totalStatuses = countSub + countPend + countNa;
+  const pctSub = totalStatuses > 0 ? (countSub / totalStatuses * 100) : 0;
+  const pctPend = totalStatuses > 0 ? (countPend / totalStatuses * 100) : 0;
+  const pctNa = totalStatuses > 0 ? (countNa / totalStatuses * 100) : 0;
+
+  distBar.innerHTML = `
+    <div class="dist-segment dist-segment-submitted" style="width: ${pctSub}%" title="Submitted: ${countSub}"></div>
+    <div class="dist-segment dist-segment-pending" style="width: ${pctPend}%" title="Pending: ${countPend}"></div>
+    <div class="dist-segment dist-segment-na" style="width: ${pctNa}%" title="Not Applicable: ${countNa}"></div>
+  `;
+
+  distLabels.innerHTML = `
+    <div class="dist-label-item"><span class="dist-dot" style="background-color: var(--success);"></span> Submitted (${countSub})</div>
+    <div class="dist-label-item"><span class="dist-dot" style="background-color: var(--danger);"></span> Pending (${countPend})</div>
+    <div class="dist-label-item"><span class="dist-dot" style="background-color: var(--neutral);"></span> Not Applicable (${countNa})</div>
+  `;
+
+  // 3. Render Follow-up Table
+  if (pendingBiddersList.length === 0) {
+    followUpList.innerHTML = `
+      <tr>
+        <td colspan="4" style="text-align: center; padding: 2rem;">
+          <div style="font-weight: 500; color: var(--text-secondary);">No bidders need follow-up. All clear!</div>
+        </td>
+      </tr>
+    `;
+  } else {
+    // Sort: Most pending first
+    pendingBiddersList.sort((a, b) => b.pendingCount - a.pendingCount);
+    followUpList.innerHTML = pendingBiddersList.map(entry => `
+      <tr>
+        <td style="font-weight: 600;">${escapeHTML(entry.bidder.name)}</td>
+        <td>${escapeHTML(entry.bidder.email)}</td>
+        <td>
+          <span class="badge badge-pending">${entry.pendingCount} missing</span>
+        </td>
+        <td>
+          <button class="btn btn-secondary" onclick="routeToDraftMail('${entry.bidder.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+            Draft Reminder
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  }
+}
+
+// Global utility helper functions
+function escapeHTML(str) {
+  if (!str) return '';
+  return str.replace(/[&<>'"]/g, 
+    tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+  );
+}
+
+// Navigation shortcuts
+window.routeToDraftMail = function(bidderId) {
+  navigateToSection("email-section");
+  // Pre-select in mail view
+  setTimeout(() => {
+    const bidderItem = document.querySelector(`.email-bidder-item[data-id="${bidderId}"]`);
+    if (bidderItem) bidderItem.click();
+  }, 100);
+};
+
