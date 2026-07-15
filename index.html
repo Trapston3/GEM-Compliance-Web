@@ -882,6 +882,37 @@ body:not(.dark) .moon-icon { display: block; }
   }
 }
 
+@media (max-width: 600px) {
+  .matrix-toolbar, .catalogue-toolbar, .email-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+  .matrix-toolbar .left-actions, 
+  .matrix-toolbar .right-actions,
+  .catalogue-toolbar .filter-group {
+    flex-direction: column !important;
+    width: 100% !important;
+    align-items: stretch !important;
+    gap: 0.5rem !important;
+  }
+  .matrix-toolbar .btn, 
+  .email-toolbar .btn,
+  .catalogue-toolbar .search-input,
+  .catalogue-toolbar .filter-select {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .email-layout-split {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    gap: 1rem !important;
+  }
+  .email-left-panel {
+    max-height: 200px !important;
+  }
+}
+
 /* Print Stylesheet overrides */
 @media print {
   body, html {
@@ -1742,11 +1773,11 @@ function renderCatalogue() {
   // 2. Status Filters
   if (filterStatus === "fully_submitted") {
     filtered = filtered.filter(b => {
-      return state.checklistItems.every(item => b.statuses[item] === 'submitted' || b.statuses[item] === 'not_applicable');
+      return state.checklistItems.every(item => (b.statuses[item] || 'not_submitted') === 'submitted' || (b.statuses[item] || 'not_submitted') === 'not_applicable');
     });
   } else if (filterStatus === "has_pending") {
     filtered = filtered.filter(b => {
-      return state.checklistItems.some(item => b.statuses[item] === 'not_submitted');
+      return state.checklistItems.some(item => (b.statuses[item] || 'not_submitted') === 'not_submitted');
     });
   }
 
@@ -1755,8 +1786,8 @@ function renderCatalogue() {
     filtered.sort((a, b) => a.name.localeCompare(b.name));
   } else if (sortVal === "most_pending") {
     filtered.sort((a, b) => {
-      const countA = state.checklistItems.filter(item => a.statuses[item] === 'not_submitted').length;
-      const countB = state.checklistItems.filter(item => b.statuses[item] === 'not_submitted').length;
+      const countA = state.checklistItems.filter(item => (a.statuses[item] || 'not_submitted') === 'not_submitted').length;
+      const countB = state.checklistItems.filter(item => (b.statuses[item] || 'not_submitted') === 'not_submitted').length;
       return countB - countA;
     });
   } else if (sortVal === "recently_added") {
@@ -2278,7 +2309,7 @@ function renderEmailReminders() {
   const pendingBidders = state.bidders.filter(b => {
     const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.email);
     if (!isEmailValid) return false;
-    return state.checklistItems.some(item => b.statuses[item] === 'not_submitted');
+    return state.checklistItems.some(item => (b.statuses[item] || 'not_submitted') === 'not_submitted');
   });
 
   if (pendingBidders.length === 0) {
@@ -2300,7 +2331,7 @@ function renderEmailReminders() {
 
   // Render list
   listContainer.innerHTML = pendingBidders.map(b => {
-    const pendingCount = state.checklistItems.filter(item => b.statuses[item] === 'not_submitted').length;
+    const pendingCount = state.checklistItems.filter(item => (b.statuses[item] || 'not_submitted') === 'not_submitted').length;
     const isActive = b.id === selectedBidderEmailId;
     return `
       <div class="email-bidder-item ${isActive?'active':''}" data-id="${b.id}">
@@ -2343,7 +2374,7 @@ function populateEmailEditor(bidder) {
   if (!toInput || !subjectInput || !bodyTextarea || !copyBtn || !mailtoBtn || !warningDiv) return;
 
   // Get pending item names (full text expanded)
-  const missing = state.checklistItems.filter(item => bidder.statuses[item] === 'not_submitted');
+  const missing = state.checklistItems.filter(item => (bidder.statuses[item] || 'not_submitted') === 'not_submitted');
   
   // Construct default subject
   const defaultSubject = `Submission of Pending Tender Documents – ${state.tenderName}`;
@@ -2424,7 +2455,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const pendingBidders = state.bidders.filter(b => {
       const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.email);
       if (!isEmailValid) return false;
-      return state.checklistItems.some(item => b.statuses[item] === 'not_submitted');
+      return state.checklistItems.some(item => (b.statuses[item] || 'not_submitted') === 'not_submitted');
     });
 
     if (pendingBidders.length === 0) {
@@ -2444,7 +2475,7 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
 
     pendingBidders.forEach(b => {
-      const missing = state.checklistItems.filter(item => b.statuses[item] === 'not_submitted');
+      const missing = state.checklistItems.filter(item => (b.statuses[item] || 'not_submitted') === 'not_submitted');
       const subject = `Submission of Pending Tender Documents – ${state.tenderName}`;
       const salutation = b.contactPerson ? `Dear ${b.contactPerson},` : "Dear Sir/Madam,";
       const bodyLines = [
