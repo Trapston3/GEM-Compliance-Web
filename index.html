@@ -12,14 +12,14 @@
   /* Theme Light Mode */
   --bg-main: #f8fafc;
   --bg-card: #ffffff;
-  --bg-sidebar: #18181b; /* Zinc 900 (Always Dark sidebar) */
-  --bg-sidebar-hover: #27272a;
+  --bg-sidebar: #f4f4f5; /* Zinc 100 */
+  --bg-sidebar-hover: #e4e4e7; /* Zinc 200 */
   --border-color: #e2e8f0;
   
   --text-primary: #0f172a;
   --text-secondary: #64748b;
-  --text-sidebar: #a1a1aa;
-  --text-sidebar-active: #ffffff;
+  --text-sidebar: #71717a; /* Zinc 600 */
+  --text-sidebar-active: #09090b; /* Zinc 950 */
   
   --accent: #4f46e5;
   --accent-hover: #4338ca;
@@ -59,6 +59,11 @@ body.dark {
   --danger-bg: rgba(220, 38, 38, 0.15);
   --warning-bg: rgba(202, 138, 4, 0.15);
   --neutral-bg: #27272a;
+  
+  --bg-sidebar: #18181b;
+  --bg-sidebar-hover: #27272a;
+  --text-sidebar: #a1a1aa;
+  --text-sidebar-active: #ffffff;
   
   --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
 }
@@ -150,7 +155,7 @@ body {
 }
 .nav-item.active {
   background-color: var(--accent);
-  color: var(--text-sidebar-active);
+  color: #ffffff !important;
 }
 
 /* Workspace styling */
@@ -1428,6 +1433,10 @@ document.addEventListener("DOMContentLoaded", () => {
     item.addEventListener("click", () => {
       const target = item.getAttribute("data-target");
       navigateToSection(target);
+      const sidebar = document.getElementById("sidebar");
+      if (sidebar) {
+        sidebar.classList.remove("mobile-active");
+      }
     });
   });
 
@@ -1452,6 +1461,17 @@ document.addEventListener("DOMContentLoaded", () => {
       sidebar.classList.toggle("mobile-active");
     });
   }
+
+  // Close sidebar on click outside
+  document.addEventListener("click", (e) => {
+    const sidebar = document.getElementById("sidebar");
+    const mobileBtn = document.getElementById("mobile-toggle");
+    if (sidebar && sidebar.classList.contains("mobile-active")) {
+      if (!sidebar.contains(e.target) && !mobileBtn.contains(e.target)) {
+        sidebar.classList.remove("mobile-active");
+      }
+    }
+  });
 
   // Close modal on escape key
   window.addEventListener("keydown", (e) => {
