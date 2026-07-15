@@ -965,6 +965,240 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+// ===== SECTION 5: DRAFT MAIL ENGINE =====
+let selectedBidderEmailId = null;
+
+function renderEmailReminders() {
+  const listContainer = document.getElementById("email-bidders-list-container");
+  const activeEditor = document.getElementById("email-editor-active-state");
+  const emptyState = document.getElementById("email-editor-empty-state");
+
+  if (!listContainer || !activeEditor || !emptyState) return;
+
+  // Filter bidders with at least one not_submitted item and valid email
+  const pendingBidders = state.bidders.filter(b => {
+    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.email);
+    if (!isEmailValid) return false;
+    return state.checklistItems.some(item => b.statuses[item] === 'not_submitted');
+  });
+
+  if (pendingBidders.length === 0) {
+    listContainer.innerHTML = `
+      <div style="font-size:0.8rem; color:var(--text-secondary); padding:10px; text-align:center;">
+        No bidders require follow-up.
+      </div>
+    `;
+    activeEditor.style.display = "none";
+    emptyState.style.display = "flex";
+    emptyState.innerHTML = `
+      <div class="empty-state">
+        <svg class="empty-state-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        <div class="empty-state-msg">No reminder emails are needed. All bidders have submitted their documents!</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Render list
+  listContainer.innerHTML = pendingBidders.map(b => {
+    const pendingCount = state.checklistItems.filter(item => b.statuses[item] === 'not_submitted').length;
+    const isActive = b.id === selectedBidderEmailId;
+    return `
+      <div class="email-bidder-item ${isActive?'active':''}" data-id="${b.id}">
+        <h4>${escapeHTML(b.name)}</h4>
+        <span>${pendingCount} pending items</span>
+      </div>
+    `;
+  }).join('');
+
+  // Setup selection listeners
+  document.querySelectorAll(".email-bidder-item").forEach(item => {
+    item.addEventListener("click", () => {
+      selectedBidderEmailId = item.getAttribute("data-id");
+      renderEmailReminders();
+    });
+  });
+
+  // If active selected bidder is not in list, auto-select first
+  const stillExists = pendingBidders.some(b => b.id === selectedBidderEmailId);
+  if (!stillExists && pendingBidders.length > 0) {
+    selectedBidderEmailId = pendingBidders[0].id;
+  }
+
+  const currentBidder = pendingBidders.find(b => b.id === selectedBidderEmailId);
+  if (currentBidder) {
+    activeEditor.style.display = "block";
+    emptyState.style.display = "none";
+    populateEmailEditor(currentBidder);
+  }
+}
+
+function populateEmailEditor(bidder) {
+  const toInput = document.getElementById("email-to");
+  const subjectInput = document.getElementById("email-subject");
+  const bodyTextarea = document.getElementById("email-body");
+  const copyBtn = document.getElementById("email-copy-btn");
+  const mailtoBtn = document.getElementById("email-mailto-btn");
+  const warningDiv = document.getElementById("email-length-warning");
+
+  if (!toInput || !subjectInput || !bodyTextarea || !copyBtn || !mailtoBtn || !warningDiv) return;
+
+  // Get pending item names (full text expanded)
+  const missing = state.checklistItems.filter(item => bidder.statuses[item] === 'not_submitted');
+  
+  // Construct default subject
+  const defaultSubject = `Submission of Pending Tender Documents – ${state.tenderName}`;
+  
+  // Construct body
+  const salutation = bidder.contactPerson ? `Dear ${bidder.contactPerson},` : "Dear Sir/Madam,";
+  const bodyLines = [
+    salutation,
+    "",
+    `With reference to the subject tender, we request you to kindly submit the following missing documents at the earliest:`,
+    ""
+  ];
+
+  missing.forEach((item, index) => {
+    bodyLines.push(`${index + 1}. "${item}"`);
+  });
+
+  bodyLines.push("");
+  bodyLines.push("Kindly submit your reply at the earliest, else your offer will be evaluated based on available documents in your offer.");
+  bodyLines.push("");
+  bodyLines.push("Sincerely,");
+  bodyLines.push("Tender Committee");
+
+  toInput.value = bidder.email;
+  subjectInput.value = defaultSubject;
+  bodyTextarea.value = bodyLines.join("\n");
+
+  // Update mailto URL
+  updateMailtoLink();
+
+  // Event listener on subject / body change
+  subjectInput.oninput = updateMailtoLink;
+  bodyTextarea.oninput = updateMailtoLink;
+}
+
+function updateMailtoLink() {
+  const to = document.getElementById("email-to")?.value || "";
+  const subject = document.getElementById("email-subject")?.value || "";
+  const body = document.getElementById("email-body")?.value || "";
+  const mailtoBtn = document.getElementById("email-mailto-btn");
+  const warningDiv = document.getElementById("email-length-warning");
+
+  if (!mailtoBtn || !warningDiv) return;
+
+  const mailtoUrl = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  
+  if (mailtoUrl.length > 2000) {
+    mailtoBtn.removeAttribute("href");
+    mailtoBtn.style.pointerEvents = "none";
+    mailtoBtn.style.opacity = "0.5";
+    warningDiv.textContent = "Mailto URL exceeds 2000 characters. Please use \"Copy to Clipboard\" instead to avoid truncation.";
+  } else {
+    mailtoBtn.setAttribute("href", mailtoUrl);
+    mailtoBtn.style.pointerEvents = "auto";
+    mailtoBtn.style.opacity = "1";
+    warningDiv.textContent = "";
+  }
+}
+
+// Clipboard functionality
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("email-copy-btn")?.addEventListener("click", () => {
+    const body = document.getElementById("email-body")?.value || "";
+    navigator.clipboard.writeText(body).then(() => {
+      showToast("Email text copied to clipboard.");
+    }).catch(err => {
+      showToast("Failed to copy text: " + err.message);
+    });
+  });
+
+  // Draft All stacked view renderer
+  document.getElementById("email-draft-all-btn")?.addEventListener("click", () => {
+    const activeEditor = document.getElementById("email-editor-active-state");
+    const emptyState = document.getElementById("email-editor-empty-state");
+    
+    if (!activeEditor || !emptyState) return;
+
+    const pendingBidders = state.bidders.filter(b => {
+      const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.email);
+      if (!isEmailValid) return false;
+      return state.checklistItems.some(item => b.statuses[item] === 'not_submitted');
+    });
+
+    if (pendingBidders.length === 0) {
+      showToast("No drafts to generate.");
+      return;
+    }
+
+    activeEditor.style.display = "none";
+    emptyState.style.display = "flex";
+
+    let html = `
+      <div class="stacked-emails-list" style="width: 100%;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
+          <h3 style="margin:0;">All Pending Reminders (${pendingBidders.length})</h3>
+          <button class="btn btn-secondary" onclick="renderEmailReminders()">Single Editor View</button>
+        </div>
+    `;
+
+    pendingBidders.forEach(b => {
+      const missing = state.checklistItems.filter(item => b.statuses[item] === 'not_submitted');
+      const subject = `Submission of Pending Tender Documents – ${state.tenderName}`;
+      const salutation = b.contactPerson ? `Dear ${b.contactPerson},` : "Dear Sir/Madam,";
+      const bodyLines = [
+        salutation,
+        "",
+        `With reference to the subject tender, we request you to kindly submit the following missing documents at the earliest:`,
+        ""
+      ];
+      missing.forEach((item, index) => {
+        bodyLines.push(`${index + 1}. "${item}"`);
+      });
+      bodyLines.push("");
+      bodyLines.push("Kindly submit your reply at the earliest, else your offer will be evaluated based on available documents in your offer.");
+      bodyLines.push("");
+      bodyLines.push("Sincerely,");
+      bodyLines.push("Tender Committee");
+
+      const bodyText = bodyLines.join("\n");
+      const mailtoUrl = `mailto:${encodeURIComponent(b.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+      const isTooLong = mailtoUrl.length > 2000;
+
+      html += `
+        <div class="stacked-email-item">
+          <div style="font-weight:600; font-size:0.95rem; margin-bottom:4px; text-align:left;">To: ${escapeHTML(b.email)}</div>
+          <div style="font-weight:500; font-size:0.85rem; color:var(--text-secondary); margin-bottom:10px; text-align:left;">Subject: ${escapeHTML(subject)}</div>
+          <textarea class="form-textarea" readonly rows="8" style="font-size:0.8rem; background-color:var(--neutral-bg);">${escapeHTML(bodyText)}</textarea>
+          <div style="display:flex; gap:10px; margin-top:8px; align-items:center;">
+            <button class="btn btn-secondary" onclick="copyTextDirectly(this)" data-text="${escapeHTML(bodyText)}" style="padding:4px 8px; font-size:11px;">Copy</button>
+            ${isTooLong ? 
+              `<span style="color:var(--danger); font-size:11px;">Link too long (use copy)</span>` : 
+              `<a class="btn btn-primary" href="${mailtoUrl}" style="padding:4px 8px; font-size:11px; text-decoration:none;">Open Mail App</a>`
+            }
+          </div>
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+    emptyState.innerHTML = html;
+  });
+});
+
+// Direct copy helper for stacked views
+window.copyTextDirectly = function(btn) {
+  const text = btn.getAttribute("data-text");
+  navigator.clipboard.writeText(text).then(() => {
+    showToast("Email text copied.");
+  }).catch(err => {
+    showToast("Failed to copy: " + err.message);
+  });
+};
+
+
 
 
 
