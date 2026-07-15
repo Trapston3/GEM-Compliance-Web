@@ -709,6 +709,131 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+// ===== SECTION 4: CHECKLIST MATRIX SPREADSHEET RENDERER =====
+function renderMatrix() {
+  const container = document.getElementById("matrix-scroll-container");
+  if (!container) return;
+
+  if (state.checklistItems.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="margin: 2rem;">
+        <div class="empty-state-msg">No checklist items. Create one below:</div>
+        <button class="btn btn-primary" onclick="promptAddChecklistItem()">Add Checklist Item</button>
+      </div>
+    `;
+    return;
+  }
+
+  let html = `
+    <table class="matrix-table" id="matrix-data-table">
+      <thead>
+        <tr>
+          <th>Checklist Item</th>
+  `;
+
+  // Map bidder column headers
+  state.bidders.forEach(b => {
+    html += `
+      <th>
+        <div class="th-bidder-content">
+          <span class="th-bidder-name" title="${escapeHTML(b.name)}">${escapeHTML(b.name)}</span>
+          <span class="th-bidder-email">${escapeHTML(b.email)}</span>
+          <div class="th-bidder-actions">
+            <button class="icon-btn" onclick="openEditModal('${b.id}')" title="Edit Bidder">✏️</button>
+            <button class="icon-btn icon-btn-danger" onclick="bulkMarkNA('${b.id}')" title="Mark all N/A">🚫</button>
+            <button class="icon-btn icon-btn-danger" onclick="openDeleteConfirm('${b.id}')" title="Delete Bidder">🗑️</button>
+          </div>
+        </div>
+      </th>
+    `;
+  });
+
+  html += `
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  // Map rows (Checklist items)
+  state.checklistItems.forEach(item => {
+    html += `
+      <tr data-item="${escapeHTML(item)}">
+        <td>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <span class="item-name-text" title="${escapeHTML(item)}">${escapeHTML(item)}</span>
+            <div style="display:flex; gap:2px; flex-shrink:0;">
+              <button class="icon-btn" onclick="renameChecklistItem('${escapeHTML(item)}')" title="Rename item">✏️</button>
+              <button class="icon-btn icon-btn-danger" onclick="deleteChecklistItem('${escapeHTML(item)}')" title="Delete item">🗑️</button>
+            </div>
+          </div>
+        </td>
+    `;
+
+    // Map cells
+    state.bidders.forEach(b => {
+      const status = b.statuses[item] || 'not_submitted';
+      html += `
+        <td style="text-align: center;">
+          <div class="segmented-control" data-bidder="${b.id}" data-item="${escapeHTML(item)}">
+            <button class="seg-btn ${status==='submitted'?'active':''}" data-status="submitted" data-action="toggle-status">Sub</button>
+            <button class="seg-btn ${status==='not_submitted'?'active':''}" data-status="not_submitted" data-action="toggle-status">Pend</button>
+            <button class="seg-btn ${status==='not_applicable'?'active':''}" data-status="not_applicable" data-action="toggle-status">N/A</button>
+          </div>
+        </td>
+      `;
+    });
+
+    html += `</tr>`;
+  });
+
+  html += `
+      </tbody>
+    </table>
+  `;
+
+  container.innerHTML = html;
+}
+
+// Event Delegation in Checklist Matrix tbody
+document.addEventListener("DOMContentLoaded", () => {
+  const matrixContainer = document.getElementById("matrix-scroll-container");
+  if (matrixContainer) {
+    matrixContainer.addEventListener("click", (e) => {
+      const btn = e.target.closest('[data-action="toggle-status"]');
+      if (!btn) return;
+
+      const control = btn.closest(".segmented-control");
+      const bidderId = control.getAttribute("data-bidder");
+      const itemKey = control.getAttribute("data-item");
+      const nextStatus = btn.getAttribute("data-status");
+
+      const bidder = state.bidders.find(b => b.id === bidderId);
+      if (bidder) {
+        bidder.statuses[itemKey] = nextStatus;
+        saveStateToStorage();
+
+        // Visually toggle active class
+        control.querySelectorAll(".seg-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+      }
+    });
+  }
+});
+
+// Action methods
+window.bulkMarkNA = function(bidderId) {
+  const bidder = state.bidders.find(b => b.id === bidderId);
+  if (bidder) {
+    state.checklistItems.forEach(item => {
+      bidder.statuses[item] = 'not_applicable';
+    });
+    saveStateToStorage();
+    showToast(`Marked all documents N/A for "${bidder.name}".`);
+    renderMatrix();
+  }
+};
+
+
 
 
 
