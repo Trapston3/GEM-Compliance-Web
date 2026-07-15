@@ -1189,6 +1189,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // Direct copy helper for stacked views
+// Direct copy helper for stacked views
 window.copyTextDirectly = function(btn) {
   const text = btn.getAttribute("data-text");
   navigator.clipboard.writeText(text).then(() => {
@@ -1197,6 +1198,60 @@ window.copyTextDirectly = function(btn) {
     showToast("Failed to copy: " + err.message);
   });
 };
+
+// ===== SECTION 5.5: SHEETJS EXCEL EXPORT =====
+function downloadExcel() {
+  try {
+    if (state.bidders.length === 0) {
+      showToast("No bidders available to export.");
+      return;
+    }
+
+    // Build 2D array headers
+    const headers = ["Checklist Item"];
+    state.bidders.forEach(b => {
+      headers.push(`${b.name} (${b.email})`);
+    });
+
+    const rows = [headers];
+
+    // Map rows mapping status values to full strings
+    state.checklistItems.forEach(item => {
+      const row = [item];
+      state.bidders.forEach(b => {
+        const s = b.statuses[item] || 'not_submitted';
+        let label = "Not Submitted";
+        if (s === 'submitted') label = "Submitted";
+        else if (s === 'not_applicable') label = "Not Applicable";
+        row.push(label);
+      });
+      rows.push(row);
+    });
+
+    // SheetJS creation
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    
+    // Auto size column widths
+    const wscols = [{ wch: 40 }];
+    state.bidders.forEach(() => {
+      wscols.push({ wch: 30 });
+    });
+    ws['!cols'] = wscols;
+
+    XLSX.utils.book_append_sheet(wb, ws, "Compliance Checklist");
+    XLSX.writeFile(wb, `${state.tenderName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_compliance_checklist.xlsx`);
+    showToast("Excel spreadsheet downloaded successfully.");
+  } catch (err) {
+    showToast("Excel Export Failed: " + err.message);
+  }
+}
+
+// Setup toolbar clicks
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("matrix-download-excel")?.addEventListener("click", downloadExcel);
+});
+
 
 
 
