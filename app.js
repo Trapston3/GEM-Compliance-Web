@@ -429,4 +429,115 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+// ===== SECTION 3: BIDDER CATALOGUE DASHBOARD =====
+function renderCatalogue() {
+  const container = document.getElementById("catalogue-grid-container");
+  const searchVal = (document.getElementById("catalogue-search")?.value || "").toLowerCase().trim();
+  const filterStatus = document.getElementById("catalogue-filter-status")?.value || "all";
+  const sortVal = document.getElementById("catalogue-sort")?.value || "name_az";
+
+  if (!container) return;
+
+  let filtered = [...state.bidders];
+
+  // 1. Search Query
+  if (searchVal) {
+    filtered = filtered.filter(b => 
+      b.name.toLowerCase().includes(searchVal) || 
+      b.email.toLowerCase().includes(searchVal)
+    );
+  }
+
+  // 2. Status Filters
+  if (filterStatus === "fully_submitted") {
+    filtered = filtered.filter(b => {
+      return state.checklistItems.every(item => b.statuses[item] === 'submitted' || b.statuses[item] === 'not_applicable');
+    });
+  } else if (filterStatus === "has_pending") {
+    filtered = filtered.filter(b => {
+      return state.checklistItems.some(item => b.statuses[item] === 'not_submitted');
+    });
+  }
+
+  // 3. Sort options
+  if (sortVal === "name_az") {
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (sortVal === "most_pending") {
+    filtered.sort((a, b) => {
+      const countA = state.checklistItems.filter(item => a.statuses[item] === 'not_submitted').length;
+      const countB = state.checklistItems.filter(item => b.statuses[item] === 'not_submitted').length;
+      return countB - countA;
+    });
+  } else if (sortVal === "recently_added") {
+    filtered.sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  // Empty state check
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="grid-column: 1 / -1;">
+        <svg class="empty-state-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <div class="empty-state-msg">No bidders found matching your filters.</div>
+        <button class="btn btn-primary" onclick="navigateToSection('add-bidder-section')">Add a Bidder</button>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map(b => {
+    const totalItems = state.checklistItems.length;
+    let countSub = 0;
+    let countPend = 0;
+    let countNa = 0;
+
+    state.checklistItems.forEach(item => {
+      const s = b.statuses[item] || 'not_submitted';
+      if (s === 'submitted') countSub++;
+      else if (s === 'not_applicable') countNa++;
+      else countPend++;
+    });
+
+    const denominator = totalItems - countNa;
+    const pct = denominator > 0 ? Math.round((countSub / denominator) * 100) : 0;
+    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.email);
+
+    return `
+      <div class="bidder-card card">
+        <div class="bidder-card-header">
+          <h4 class="bidder-card-title">${escapeHTML(b.name)}</h4>
+          <div class="bidder-card-email">${escapeHTML(b.email)}</div>
+        </div>
+        <div class="bidder-card-stats">
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem; font-weight:500;">
+            <span>Progress</span>
+            <span>${countSub}/${denominator} (${pct}%)</span>
+          </div>
+          <div class="card-progress-bar-wrapper">
+            <div class="card-progress-bar" style="width: ${pct}%"></div>
+          </div>
+          <div class="dot-breakdown">
+            <span><span style="color:var(--success)">●</span> ${countSub} Sub</span>
+            <span><span style="color:var(--danger)">●</span> ${countPend} Pend</span>
+            <span><span style="color:var(--neutral)">●</span> ${countNa} N/A</span>
+          </div>
+        </div>
+        <div class="bidder-card-actions">
+          <button class="btn btn-secondary" onclick="openDetailsModal('${b.id}')">Details</button>
+          <button class="btn btn-secondary" onclick="openEditModal('${b.id}')">Edit</button>
+          <button class="btn btn-destructive" onclick="openDeleteConfirm('${b.id}')">Delete</button>
+          <button class="btn btn-primary" onclick="routeToDraftMail('${b.id}')" ${!isEmailValid || countPend === 0 ? 'disabled title="No pending items or invalid email"' : ''}>Email</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Setup toolbar filters list listeners
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("catalogue-search")?.addEventListener("input", renderCatalogue);
+  document.getElementById("catalogue-filter-status")?.addEventListener("change", renderCatalogue);
+  document.getElementById("catalogue-sort")?.addEventListener("change", renderCatalogue);
+});
+
+
 
