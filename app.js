@@ -539,5 +539,176 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("catalogue-sort")?.addEventListener("change", renderCatalogue);
 });
 
+// ===== SECTION 3.5: MODALS FOR DETAILS, EDIT, & DELETE OPERATIONS =====
+let activeBidderId = null;
+
+// --- DETAILS MODAL ---
+window.openDetailsModal = function(bidderId) {
+  activeBidderId = bidderId;
+  const bidder = state.bidders.find(b => b.id === bidderId);
+  if (!bidder) return;
+
+  const modal = document.getElementById("bidder-details-modal");
+  const title = document.getElementById("modal-bidder-title");
+  const body = document.getElementById("modal-bidder-body");
+
+  if (!modal || !title || !body) return;
+
+  title.textContent = `Checklist: ${bidder.name}`;
+  
+  // Render list of statuses inside modal
+  body.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:10px;">
+        Company Representative: ${escapeHTML(bidder.contactPerson) || 'N/A'} | Phone: ${escapeHTML(bidder.phone) || 'N/A'}
+      </div>
+      ${state.checklistItems.map(item => {
+        const status = bidder.statuses[item] || 'not_submitted';
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
+            <span style="font-weight:500; font-size:0.85rem; max-width:60%;">${escapeHTML(item)}</span>
+            <div class="segmented-control" data-bidder="${bidder.id}" data-item="${escapeHTML(item)}">
+              <button class="seg-btn ${status==='submitted'?'active':''}" data-status="submitted">Sub</button>
+              <button class="seg-btn ${status==='not_submitted'?'active':''}" data-status="not_submitted">Pend</button>
+              <button class="seg-btn ${status==='not_applicable'?'active':''}" data-status="not_applicable">N/A</button>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+  modal.classList.add("active");
+};
+
+// Close modals
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("close-details-modal")?.addEventListener("click", () => {
+    document.getElementById("bidder-details-modal").classList.remove("active");
+    renderActiveSection("catalogue-section");
+  });
+  
+  document.getElementById("close-edit-modal")?.addEventListener("click", () => {
+    document.getElementById("bidder-edit-modal").classList.remove("active");
+  });
+
+  document.getElementById("close-confirm-modal")?.addEventListener("click", () => {
+    document.getElementById("confirm-modal").classList.remove("active");
+  });
+
+  document.getElementById("confirm-cancel-btn")?.addEventListener("click", () => {
+    document.getElementById("confirm-modal").classList.remove("active");
+  });
+  
+  // Details Modal Segmented buttons event delegation
+  document.getElementById("modal-bidder-body")?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".seg-btn");
+    if (!btn) return;
+    
+    const container = btn.closest(".segmented-control");
+    const bidderId = container.getAttribute("data-bidder");
+    const itemName = container.getAttribute("data-item");
+    const status = btn.getAttribute("data-status");
+
+    const bidder = state.bidders.find(b => b.id === bidderId);
+    if (bidder) {
+      bidder.statuses[itemName] = status;
+      saveStateToStorage();
+      
+      // Toggle active class visually
+      container.querySelectorAll(".seg-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    }
+  });
+
+  // Edit Bidder Form submits
+  document.getElementById("edit-bidder-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const bidder = state.bidders.find(b => b.id === activeBidderId);
+    if (!bidder) return;
+
+    const nameVal = document.getElementById("edit-name").value.trim();
+    const emailVal = document.getElementById("edit-email").value.trim();
+    const contactVal = document.getElementById("edit-contact").value.trim();
+    const phoneVal = document.getElementById("edit-phone").value.trim();
+
+    const nameErr = document.getElementById("edit-name-error");
+    const emailErr = document.getElementById("edit-email-error");
+
+    let isValid = true;
+    if (!nameVal) {
+      nameErr.textContent = "Name is required.";
+      isValid = false;
+    } else {
+      nameErr.textContent = "";
+    }
+
+    if (!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      emailErr.textContent = "Please enter a valid email address.";
+      isValid = false;
+    } else {
+      emailErr.textContent = "";
+    }
+
+    if (!isValid) return;
+
+    bidder.name = nameVal;
+    bidder.email = emailVal;
+    bidder.contactPerson = contactVal;
+    bidder.phone = phoneVal;
+
+    saveStateToStorage();
+    document.getElementById("bidder-edit-modal").classList.remove("active");
+    showToast("Bidder details updated.");
+    renderActiveSection("catalogue-section");
+    renderActiveSection("matrix-section");
+  });
+});
+
+// --- EDIT MODAL ---
+window.openEditModal = function(bidderId) {
+  activeBidderId = bidderId;
+  const bidder = state.bidders.find(b => b.id === bidderId);
+  if (!bidder) return;
+
+  document.getElementById("edit-name").value = bidder.name;
+  document.getElementById("edit-email").value = bidder.email;
+  document.getElementById("edit-contact").value = bidder.contactPerson || '';
+  document.getElementById("edit-phone").value = bidder.phone || '';
+
+  document.getElementById("edit-name-error").textContent = "";
+  document.getElementById("edit-email-error").textContent = "";
+
+  document.getElementById("bidder-edit-modal").classList.add("active");
+};
+
+// --- DELETE MODAL ---
+let deleteTargetBidderId = null;
+window.openDeleteConfirm = function(bidderId) {
+  deleteTargetBidderId = bidderId;
+  const bidder = state.bidders.find(b => b.id === bidderId);
+  if (!bidder) return;
+
+  document.getElementById("confirm-modal-message").textContent = `Are you sure you want to delete bidder "${bidder.name}"? This action cannot be undone.`;
+  document.getElementById("confirm-ok-btn").textContent = "Delete";
+  document.getElementById("confirm-modal").classList.add("active");
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("confirm-ok-btn")?.addEventListener("click", () => {
+    if (deleteTargetBidderId) {
+      state.bidders = state.bidders.filter(b => b.id !== deleteTargetBidderId);
+      saveStateToStorage();
+      document.getElementById("confirm-modal").classList.remove("active");
+      showToast("Bidder removed.");
+      deleteTargetBidderId = null;
+      renderActiveSection("catalogue-section");
+      renderActiveSection("matrix-section");
+      renderActiveSection("overview-section");
+    }
+  });
+});
+
+
 
 
