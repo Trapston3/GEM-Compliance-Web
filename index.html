@@ -1200,6 +1200,7 @@ body:not(.dark) .moon-icon { display: block; }
                 </div>
                 <div class="email-actions">
                   <button class="btn btn-primary" id="email-copy-btn">Copy to Clipboard</button>
+                  <button class="btn btn-secondary" id="email-refresh-btn">Check Again</button>
                   <a href="#" class="btn btn-secondary" id="email-mailto-btn">Open in Mail App</a>
                 </div>
                 <div class="email-warning" id="email-length-warning"></div>
@@ -2061,6 +2062,9 @@ function renderMatrix() {
           <span class="th-bidder-name" title="${escapeHTML(b.name)}">${escapeHTML(b.name)}</span>
           <span class="th-bidder-email">${escapeHTML(b.email)}</span>
           <div class="th-bidder-actions">
+            <button class="icon-btn" onclick="routeToDraftMail('${b.id}')" title="Draft Reminder Mail">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </button>
             <button class="icon-btn" onclick="openEditModal('${b.id}')" title="Edit Bidder">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/></svg>
             </button>
@@ -2445,6 +2449,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  document.getElementById("email-refresh-btn")?.addEventListener("click", () => {
+    renderEmailReminders();
+    showToast("Refreshed bidder compliance status.");
+  });
+
   // Draft All stacked view renderer
   document.getElementById("email-draft-all-btn")?.addEventListener("click", () => {
     const activeEditor = document.getElementById("email-editor-active-state");
@@ -2504,6 +2513,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <textarea class="form-textarea" readonly rows="8" style="font-size:0.8rem; background-color:var(--neutral-bg);">${escapeHTML(bodyText)}</textarea>
           <div style="display:flex; gap:10px; margin-top:8px; align-items:center;">
             <button class="btn btn-secondary" onclick="copyTextDirectly(this)" data-text="${escapeHTML(bodyText)}" style="padding:4px 8px; font-size:11px;">Copy</button>
+            <button class="btn btn-secondary" onclick="refreshStackedDraft(this, '${b.id}')" style="padding:4px 8px; font-size:11px;">Check Again</button>
             ${isTooLong ? 
               `<span style="color:var(--danger); font-size:11px;">Link too long (use copy)</span>` : 
               `<a class="btn btn-primary" href="${mailtoUrl}" style="padding:4px 8px; font-size:11px; text-decoration:none;">Open Mail App</a>`
@@ -2519,7 +2529,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // Direct copy helper for stacked views
-// Direct copy helper for stacked views
 window.copyTextDirectly = function(btn) {
   const text = btn.getAttribute("data-text");
   navigator.clipboard.writeText(text).then(() => {
@@ -2527,6 +2536,52 @@ window.copyTextDirectly = function(btn) {
   }).catch(err => {
     showToast("Failed to copy: " + err.message);
   });
+};
+
+window.refreshStackedDraft = function(btn, bidderId) {
+  const bidder = state.bidders.find(b => b.id === bidderId);
+  if (!bidder) return;
+  
+  const container = btn.closest(".stacked-email-item");
+  const textarea = container.querySelector("textarea");
+  const mailtoLink = container.querySelector("a.btn-primary");
+  
+  const missing = state.checklistItems.filter(item => (bidder.statuses[item] || 'not_submitted') === 'not_submitted');
+  const subject = `Submission of Pending Tender Documents – ${state.tenderName}`;
+  const salutation = bidder.contactPerson ? `Dear ${bidder.contactPerson},` : "Dear Sir/Madam,";
+  const bodyLines = [
+    salutation,
+    "",
+    `With reference to the subject tender, we request you to kindly submit the following missing documents at the earliest:`,
+    ""
+  ];
+  missing.forEach((item, index) => {
+    bodyLines.push(`${index + 1}. "${item}"`);
+  });
+  bodyLines.push("");
+  bodyLines.push("Kindly submit your reply at the earliest, else your offer will be evaluated based on available documents in your offer.");
+  bodyLines.push("");
+  bodyLines.push("Sincerely,");
+  bodyLines.push("Tender Committee");
+
+  const bodyText = bodyLines.join("\n");
+  if (textarea) textarea.value = bodyText;
+  
+  const copyBtn = container.querySelector('button[onclick^="copyTextDirectly"]');
+  if (copyBtn) {
+    copyBtn.setAttribute("data-text", bodyText);
+  }
+
+  if (mailtoLink) {
+    const mailtoUrl = `mailto:${encodeURIComponent(bidder.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+    if (mailtoUrl.length > 2000) {
+      mailtoLink.style.display = "none";
+    } else {
+      mailtoLink.style.display = "inline-flex";
+      mailtoLink.setAttribute("href", mailtoUrl);
+    }
+  }
+  showToast(`Refreshed compliance gaps for ${bidder.name}.`);
 };
 
 // ===== SECTION 5.5: SHEETJS EXCEL EXPORT =====
