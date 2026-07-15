@@ -1369,6 +1369,46 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+// ===== SECTION 7: FINAL POLISH & EMPTY STATE OVERRIDES =====
+function renderCatalogueEmptyState() {
+  const container = document.getElementById("catalogue-grid-container");
+  if (container && state.bidders.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="grid-column: 1 / -1;">
+        <svg class="empty-state-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <div class="empty-state-msg">No bidders registered yet.</div>
+        <button class="btn btn-primary" onclick="navigateToSection('add-bidder-section')">Add your first bidder</button>
+      </div>
+    `;
+  }
+}
+
+// Intercept Catalogue Rendering for Empty State Seeding
+const originalRenderCatalogue = renderCatalogue;
+renderCatalogue = function() {
+  originalRenderCatalogue();
+  renderCatalogueEmptyState();
+};
+
+// Check matrix empty states as well
+const originalRenderMatrix = renderMatrix;
+renderMatrix = function() {
+  originalRenderMatrix();
+  if (state.bidders.length === 0 && state.checklistItems.length > 0) {
+    const container = document.getElementById("matrix-scroll-container");
+    if (container) {
+      container.innerHTML = `
+        <div class="empty-state" style="margin: 2rem;">
+          <svg class="empty-state-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          <div class="empty-state-msg">No bidders registered yet. Add a bidder to see the compliance grid.</div>
+          <button class="btn btn-primary" onclick="navigateToSection('add-bidder-section')">Add your first bidder</button>
+        </div>
+      `;
+    }
+  }
+};
+
+
 
 
 
