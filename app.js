@@ -1252,6 +1252,124 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("matrix-download-excel")?.addEventListener("click", downloadExcel);
 });
 
+// ===== SECTION 6: PDF EXPORT & PRINT SYSTEM =====
+function downloadPDF() {
+  try {
+    if (state.bidders.length === 0) {
+      showToast("No bidders available to export.");
+      return;
+    }
+
+    // Clone table into an offscreen element for html2canvas
+    const originalTable = document.getElementById("matrix-data-table");
+    if (!originalTable) {
+      showToast("Checklist Matrix table is empty.");
+      return;
+    }
+
+    const tempContainer = document.createElement("div");
+    tempContainer.style.position = "absolute";
+    tempContainer.style.left = "-9999px";
+    tempContainer.style.top = "-9999px";
+    tempContainer.style.width = "1200px"; // Fixed width to scale elements cleanly
+    tempContainer.style.padding = "20px";
+    tempContainer.style.backgroundColor = "#ffffff";
+    tempContainer.style.color = "#000000";
+
+    // Title & Date Header
+    const headerTitle = document.createElement("h2");
+    headerTitle.textContent = state.tenderName;
+    headerTitle.style.marginBottom = "4px";
+    headerTitle.style.color = "#000000";
+    tempContainer.appendChild(headerTitle);
+
+    const headerSubtitle = document.createElement("p");
+    headerSubtitle.textContent = `Tender Compliance Checklist Matrix - Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+    headerSubtitle.style.fontSize = "12px";
+    headerSubtitle.style.color = "#555555";
+    headerSubtitle.style.marginBottom = "20px";
+    tempContainer.appendChild(headerSubtitle);
+
+    // Clone the table
+    const clonedTable = originalTable.cloneNode(true);
+    clonedTable.style.width = "100%";
+    clonedTable.style.borderCollapse = "collapse";
+    clonedTable.style.fontSize = "10px";
+    
+    // Clean up inline styles on cloned table cells
+    clonedTable.querySelectorAll("th, td").forEach(cell => {
+      cell.style.position = "static";
+      cell.style.boxShadow = "none";
+      cell.style.backgroundColor = "#ffffff";
+      cell.style.color = "#000000";
+      cell.style.border = "1px solid #cccccc";
+      cell.style.padding = "6px";
+      
+      // Remove delete/edit icons in headers and checklist item columns
+      if (cell.cellIndex === 0 && cell.tagName === "TD") {
+        // Checklist item text
+        const itemName = cell.querySelector(".item-name-text")?.textContent || "";
+        cell.textContent = itemName;
+      } else if (cell.tagName === "TH" && cell.cellIndex > 0) {
+        // Bidder Header
+        const bidderName = cell.querySelector(".th-bidder-name")?.textContent || "";
+        const bidderEmail = cell.querySelector(".th-bidder-email")?.textContent || "";
+        cell.innerHTML = `<div style="font-weight:bold;">${bidderName}</div><div style="font-size:8px;color:#555;">${bidderEmail}</div>`;
+      }
+
+      // Convert segmented control back to flat labels
+      const control = cell.querySelector(".segmented-control");
+      if (control) {
+        const activeBtn = control.querySelector(".seg-btn.active");
+        const status = activeBtn ? activeBtn.getAttribute("data-status") : "not_submitted";
+        
+        let statusText = "Not Submitted";
+        let color = "#ef4444";
+        if (status === "submitted") {
+          statusText = "Submitted";
+          color = "#22c55e";
+        } else if (status === "not_applicable") {
+          statusText = "Not Applicable";
+          color = "#71717a";
+        }
+
+        cell.innerHTML = `<span style="color:${color}; font-weight:bold;">${statusText}</span>`;
+      }
+    });
+
+    tempContainer.appendChild(clonedTable);
+    document.body.appendChild(tempContainer);
+
+    // html2pdf configuration
+    const opt = {
+      margin:       10,
+      filename:     `${state.tenderName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_compliance_checklist.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+
+    html2pdf().from(tempContainer).set(opt).save().then(() => {
+      document.body.removeChild(tempContainer);
+      showToast("PDF report downloaded successfully.");
+    }).catch(err => {
+      document.body.removeChild(tempContainer);
+      showToast("PDF Export failed: " + err.message);
+    });
+  } catch (err) {
+    showToast("PDF Export error: " + err.message);
+  }
+}
+
+// Setup toolbar clicks
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("matrix-download-pdf")?.addEventListener("click", downloadPDF);
+  document.getElementById("matrix-print")?.addEventListener("click", () => {
+    window.print();
+  });
+});
+
+
 
 
 
