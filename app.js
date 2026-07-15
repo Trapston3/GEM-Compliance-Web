@@ -319,3 +319,114 @@ window.routeToDraftMail = function(bidderId) {
   }, 100);
 };
 
+// ===== SECTION 2: ADD BIDDER FORM & RECENTLY ADDED =====
+function renderAddBidder() {
+  renderRecentlyAdded();
+}
+
+function renderRecentlyAdded() {
+  const container = document.getElementById("recently-added-list");
+  if (!container) return;
+
+  if (state.bidders.length === 0) {
+    container.innerHTML = `
+      <tr>
+        <td colspan="4" style="text-align: center; padding: 1.5rem; color: var(--text-secondary);">
+          No bidders added yet.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  // Last 5 added
+  const recent = [...state.bidders].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
+
+  container.innerHTML = recent.map(b => `
+    <tr>
+      <td style="font-weight:600;">${escapeHTML(b.name)}</td>
+      <td>${escapeHTML(b.email)}</td>
+      <td>${escapeHTML(b.contactPerson) || '<span style="color:var(--text-secondary);">-</span>'}</td>
+      <td style="font-size:0.8rem; color:var(--text-secondary);">${new Date(b.createdAt).toLocaleDateString()}</td>
+    </tr>
+  `).join('');
+}
+
+// Setup form submit listener
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("add-bidder-form");
+  if (form) {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      
+      const nameInput = document.getElementById("bidder-name");
+      const emailInput = document.getElementById("bidder-email");
+      const contactInput = document.getElementById("bidder-contact-person");
+      const phoneInput = document.getElementById("bidder-phone");
+      
+      const nameErr = document.getElementById("name-error-msg");
+      const emailErr = document.getElementById("email-error-msg");
+
+      if (!nameInput || !emailInput || !contactInput || !phoneInput || !nameErr || !emailErr) return;
+
+      let isValid = true;
+      
+      // Validate name
+      const nameVal = nameInput.value.trim();
+      if (!nameVal) {
+        nameInput.classList.add("invalid");
+        nameErr.textContent = "Company name is required.";
+        isValid = false;
+      } else {
+        nameInput.classList.remove("invalid");
+        nameErr.textContent = "";
+      }
+
+      // Validate email
+      const emailVal = emailInput.value.trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailVal) {
+        emailInput.classList.add("invalid");
+        emailErr.textContent = "Email is required.";
+        isValid = false;
+      } else if (!emailRegex.test(emailVal)) {
+        emailInput.classList.add("invalid");
+        emailErr.textContent = "Please enter a valid email address.";
+        isValid = false;
+      } else {
+        emailInput.classList.remove("invalid");
+        emailErr.textContent = "";
+      }
+
+      if (!isValid) return;
+
+      // Create new bidder status map defaulted to not_submitted
+      const statuses = {};
+      state.checklistItems.forEach(item => {
+        statuses[item] = 'not_submitted';
+      });
+
+      const newBidder = {
+        id: crypto.randomUUID(),
+        name: nameVal,
+        email: emailVal,
+        contactPerson: contactInput.value.trim(),
+        phone: phoneInput.value.trim(),
+        createdAt: Date.now(),
+        statuses: statuses
+      };
+
+      state.bidders.push(newBidder);
+      saveStateToStorage();
+      
+      // Reset form
+      form.reset();
+      
+      // Render confirmation
+      showToast(`Bidder "${newBidder.name}" successfully added.`, true);
+      renderRecentlyAdded();
+    });
+  }
+});
+
+
