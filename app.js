@@ -833,6 +833,139 @@ window.bulkMarkNA = function(bidderId) {
   }
 };
 
+// ===== SECTION 4.5: CHECKLIST MATRIX INLINE MUTATIONS =====
+window.promptAddChecklistItem = function() {
+  const name = prompt("Enter new checklist item name:");
+  if (!name) return;
+  const trimmed = name.trim();
+  if (!trimmed) return;
+
+  if (state.checklistItems.includes(trimmed)) {
+    showToast("Item already exists.");
+    return;
+  }
+
+  state.checklistItems.push(trimmed);
+  // Initialize status for all bidders
+  state.bidders.forEach(b => {
+    b.statuses[trimmed] = 'not_submitted';
+  });
+
+  saveStateToStorage();
+  renderMatrix();
+  showToast(`Added checklist item: "${trimmed}"`);
+};
+
+window.renameChecklistItem = function(oldName) {
+  const newName = prompt(`Rename checklist item "${oldName}" to:`, oldName);
+  if (!newName) return;
+  const trimmed = newName.trim();
+  if (!trimmed || trimmed === oldName) return;
+
+  if (state.checklistItems.includes(trimmed)) {
+    showToast("An item with this name already exists.");
+    return;
+  }
+
+  const idx = state.checklistItems.indexOf(oldName);
+  if (idx !== -1) {
+    state.checklistItems[idx] = trimmed;
+    // Update key in all bidders
+    state.bidders.forEach(b => {
+      if (b.statuses[oldName] !== undefined) {
+        b.statuses[trimmed] = b.statuses[oldName];
+        delete b.statuses[oldName];
+      }
+    });
+    saveStateToStorage();
+    renderMatrix();
+    showToast("Item renamed successfully.");
+  }
+};
+
+window.deleteChecklistItem = function(itemName) {
+  if (confirm(`Are you sure you want to delete checklist item "${itemName}"? This will erase status data for all bidders.`)) {
+    state.checklistItems = state.checklistItems.filter(item => item !== itemName);
+    // Clean up bidder keys
+    state.bidders.forEach(b => {
+      delete b.statuses[itemName];
+    });
+    saveStateToStorage();
+    renderMatrix();
+    showToast("Checklist item removed.");
+  }
+};
+
+// Matrix toolbar button actions
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("matrix-add-item-btn")?.addEventListener("click", promptAddChecklistItem);
+  
+  // Quick Add Bidder modal trigger
+  document.getElementById("matrix-add-bidder-btn")?.addEventListener("click", () => {
+    const modal = document.getElementById("quick-add-modal");
+    if (modal) {
+      document.getElementById("quick-name").value = "";
+      document.getElementById("quick-email").value = "";
+      document.getElementById("quick-name-error").textContent = "";
+      document.getElementById("quick-email-error").textContent = "";
+      modal.classList.add("active");
+    }
+  });
+
+  document.getElementById("close-quick-add-modal")?.addEventListener("click", () => {
+    document.getElementById("quick-add-modal").classList.remove("active");
+  });
+
+  // Quick Add Form submit handler
+  document.getElementById("quick-add-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const nameVal = document.getElementById("quick-name").value.trim();
+    const emailVal = document.getElementById("quick-email").value.trim();
+    const nameErr = document.getElementById("quick-name-error");
+    const emailErr = document.getElementById("quick-email-error");
+
+    let isValid = true;
+    if (!nameVal) {
+      nameErr.textContent = "Company Name is required.";
+      isValid = false;
+    } else {
+      nameErr.textContent = "";
+    }
+
+    if (!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      emailErr.textContent = "Please enter a valid email address.";
+      isValid = false;
+    } else {
+      emailErr.textContent = "";
+    }
+
+    if (!isValid) return;
+
+    const statuses = {};
+    state.checklistItems.forEach(item => {
+      statuses[item] = 'not_submitted';
+    });
+
+    const newBidder = {
+      id: crypto.randomUUID(),
+      name: nameVal,
+      email: emailVal,
+      contactPerson: "",
+      phone: "",
+      createdAt: Date.now(),
+      statuses: statuses
+    };
+
+    state.bidders.push(newBidder);
+    saveStateToStorage();
+    document.getElementById("quick-add-modal").classList.remove("active");
+    showToast(`Bidder "${newBidder.name}" added successfully.`);
+    renderMatrix();
+    renderActiveSection("overview-section");
+  });
+});
+
+
 
 
 
