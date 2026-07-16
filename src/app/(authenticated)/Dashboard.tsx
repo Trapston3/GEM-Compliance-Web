@@ -522,13 +522,13 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
     <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-zinc-950">
       
       {/* Subheader Toolbar */}
-      <div className="bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 px-6 py-3 flex items-center justify-between shrink-0">
+      <div className="bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 p-3 sm:px-6 sm:py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between shrink-0">
         
         {/* Navigation Tabs */}
-        <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl">
+        <div className="flex max-w-full overflow-x-auto bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
+            className={`flex shrink-0 items-center gap-2 px-3 sm:px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
               activeTab === 'overview'
                 ? 'bg-white dark:bg-zinc-700 text-slate-800 dark:text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200'
@@ -539,7 +539,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
           </button>
           <button
             onClick={() => setActiveTab('bidders')}
-            className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
+            className={`flex shrink-0 items-center gap-2 px-3 sm:px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
               activeTab === 'bidders'
                 ? 'bg-white dark:bg-zinc-700 text-slate-800 dark:text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200'
@@ -550,7 +550,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
           </button>
           <button
             onClick={() => setActiveTab('matrix')}
-            className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
+            className={`flex shrink-0 items-center gap-2 px-3 sm:px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
               activeTab === 'matrix'
                 ? 'bg-white dark:bg-zinc-700 text-slate-800 dark:text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200'
@@ -562,7 +562,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
         </div>
 
         {/* Global actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
           {activeTab === 'matrix' && (
             <button
               onClick={downloadExcel}
@@ -582,7 +582,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
       </div>
 
       {/* Main Content Pane */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="min-w-0 flex-1 overflow-y-auto p-3 sm:p-6">
         <div className="max-w-7xl mx-auto h-full">
 
           {/* OVERVIEW TAB */}
@@ -639,7 +639,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
                   </div>
 
                   {/* Labels */}
-                  <div className="flex items-center gap-6 mt-4 text-xs font-semibold text-slate-500 dark:text-zinc-400">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 text-xs font-semibold text-slate-500 dark:text-zinc-400">
                     <div className="flex items-center gap-1.5">
                       <span className="w-3 h-3 bg-emerald-500 rounded-full" />
                       <span>Compliant: {stats.compliantCells} ({stats.totalCells > 0 ? Math.round((stats.compliantCells / stats.totalCells) * 100) : 0}%)</span>
@@ -678,7 +678,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
               </div>
 
               {/* Grid Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
                 {filteredBidders.map(bidder => {
                   const details = getBidderStats(bidder);
                   return (
@@ -763,7 +763,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
 
           {/* CHECKLIST MATRIX TAB (Spreadsheet scroll view) */}
           {activeTab === 'matrix' && (
-            <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden flex flex-col h-full max-h-[calc(100vh-220px)]">
+            <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden flex flex-col h-full max-h-[calc(100dvh-210px)]">
               <div className="overflow-auto flex-1 relative">
                 <table className="border-collapse w-max min-w-full text-xs">
                   <thead>
@@ -955,7 +955,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Contact Person</label>
               <input
@@ -1030,7 +1030,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Contact Person</label>
               <input

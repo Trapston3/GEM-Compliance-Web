@@ -39,8 +39,8 @@ export default async function AccountPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <Header title="My Account" currentUser={headerUser} />
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-5xl mx-auto">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6">
+        <div className="max-w-5xl mx-auto min-w-0">
           <AccountForm user={userProp} />
         </div>
       </div>

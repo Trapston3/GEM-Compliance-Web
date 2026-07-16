@@ -16,9 +16,9 @@ export default function Header({ title, currentUser }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="h-16 border-b border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-6 flex items-center justify-between flex-shrink-0 transition-colors duration-200">
+    <header className="h-14 sm:h-16 border-b border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 pl-14 pr-3 sm:pl-14 sm:pr-6 md:px-6 flex items-center justify-between flex-shrink-0 transition-colors duration-200">
       <div>
-        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+        <h2 className="truncate text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">
           {title}
         </h2>
       </div>

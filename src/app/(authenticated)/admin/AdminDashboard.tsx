@@ -246,11 +246,11 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
     <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-zinc-950">
       
       {/* Admin Subheader / Tabs */}
-      <div className="bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 px-6 py-3 flex items-center justify-between shrink-0">
+      <div className="bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 p-3 sm:px-6 sm:py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between shrink-0">
         <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl">
           <button
             onClick={() => setActiveTab('users')}
-            className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
+            className={`flex shrink-0 items-center gap-2 px-3 sm:px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
               activeTab === 'users'
                 ? 'bg-white dark:bg-zinc-700 text-slate-800 dark:text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200'
@@ -261,7 +261,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
           </button>
           <button
             onClick={() => setActiveTab('logs')}
-            className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
+            className={`flex shrink-0 items-center gap-2 px-3 sm:px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
               activeTab === 'logs'
                 ? 'bg-white dark:bg-zinc-700 text-slate-800 dark:text-white shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200'
@@ -278,7 +278,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
       </div>
 
       {/* Main Admin Workspace */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6">
         <div className="max-w-7xl mx-auto h-full">
 
           {/* USER MANAGEMENT TAB */}
@@ -495,7 +495,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
         size="md"
       >
         <form onSubmit={handleEditSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Name (English)</label>
               <input
@@ -518,7 +518,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Designation (English)</label>
               <input
@@ -539,7 +539,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Email Address</label>
               <input

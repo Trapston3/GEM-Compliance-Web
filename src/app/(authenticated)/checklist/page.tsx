@@ -36,7 +36,7 @@ export default async function ChecklistPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <Header title="Checklist Settings" currentUser={headerUser} />
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6">
         <ChecklistSettings 
           items={serializedItems} 
           tenderId={tender.id} 

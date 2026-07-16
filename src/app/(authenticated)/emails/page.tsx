@@ -83,7 +83,7 @@ export default async function EmailsPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <Header title="Bulk Compliance Emails" currentUser={headerUser} />
-      <div className="flex-1 overflow-hidden p-6">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6">
         <BulkEmails 
           tender={tender} 
           bidders={biddersWithStatuses} 

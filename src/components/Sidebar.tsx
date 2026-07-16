@@ -13,7 +13,9 @@ import {
   LogOut, 
   Save, 
   Loader2,
-  FileText
+  FileText,
+  Menu,
+  X
 } from 'lucide-react';
 import { updateTender } from '@/app/actions/tender';
 import { useToast } from './ui/toast';
@@ -35,6 +37,7 @@ interface SidebarProps {
 export default function Sidebar({ tender, currentUser }: SidebarProps) {
   const pathname = usePathname();
   const { toast } = useToast();
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   
   const [tenderName, setTenderName] = useState(tender?.name || '');
   const [subjectLine, setSubjectLine] = useState(tender?.subjectLine || '');
@@ -70,12 +73,22 @@ export default function Sidebar({ tender, currentUser }: SidebarProps) {
   const isSuperuser = currentUser?.role === 'superuser';
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col h-full flex-shrink-0 border-r border-slate-800">
+    <>
+      <button type="button" aria-label="Open navigation" onClick={() => setIsMobileOpen(true)} className="fixed left-3 top-3 z-40 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm md:hidden dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+        <Menu size={18} />
+      </button>
+      {isMobileOpen && (
+        <button type="button" aria-label="Close navigation overlay" onClick={() => setIsMobileOpen(false)} className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[1px] md:hidden" />
+      )}
+      <aside className={isMobileOpen ? "flex fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-slate-300 shadow-2xl md:static md:z-auto md:flex md:w-64 md:shadow-none flex-col h-full flex-shrink-0 border-r border-slate-800" : "hidden fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-slate-300 shadow-2xl md:static md:z-auto md:flex md:w-64 md:shadow-none flex-col h-full flex-shrink-0 border-r border-slate-800"}>
       {/* Sidebar Header / Logo */}
-      <div className="p-5 border-b border-slate-800 flex items-center gap-3">
+      <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center gap-3">
         <div className="bg-indigo-600 text-white p-2 rounded-lg">
           <FileText size={20} />
         </div>
+        <button type="button" aria-label="Close navigation" onClick={() => setIsMobileOpen(false)} className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-800 hover:text-white md:hidden">
+          <X size={18} />
+        </button>
         <div>
           <h1 className="text-white font-bold text-base leading-none">MRPL Compliance</h1>
           <span className="text-xs text-slate-500 font-medium">Tender Tracker</span>
@@ -138,6 +151,7 @@ export default function Sidebar({ tender, currentUser }: SidebarProps) {
                 <Link
                   key={item.name}
                   href={item.href}
+                  onClick={() => setIsMobileOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${
                     isActive
                       ? 'bg-indigo-600 text-white'
@@ -153,6 +167,7 @@ export default function Sidebar({ tender, currentUser }: SidebarProps) {
             {isSuperuser && (
               <Link
                 href="/admin"
+                onClick={() => setIsMobileOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${
                   pathname === '/admin'
                     ? 'bg-rose-600 text-white'
@@ -194,6 +209,7 @@ export default function Sidebar({ tender, currentUser }: SidebarProps) {
           </button>
         </div>
       )}
-    </aside>
+      </aside>
+    </>
   );
 }

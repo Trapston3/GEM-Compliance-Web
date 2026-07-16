@@ -147,7 +147,7 @@ export default function ChecklistSettings({ items, tenderId, currentUserRole }: 
     <div className="space-y-6 max-w-4xl mx-auto">
       
       {/* Top action bar */}
-      <div className="flex justify-between items-center bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-2xl shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-2xl shadow-sm">
         <div>
           <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">
             Configure Compliance Criteria
@@ -176,7 +176,7 @@ export default function ChecklistSettings({ items, tenderId, currentUserRole }: 
           </div>
           <ul className="divide-y divide-slate-100 dark:divide-zinc-800">
             {group1Items.map((item) => (
-              <li key={item.id} className="p-4 flex items-center justify-between hover:bg-slate-50/30 dark:hover:bg-zinc-800/10 text-xs">
+              <li key={item.id} className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between hover:bg-slate-50/30 dark:hover:bg-zinc-800/10 text-xs">
                 <span className="font-semibold text-slate-800 dark:text-zinc-200">{item.label}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-emerald-600 dark:text-emerald-500 bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/20 rounded font-bold uppercase shrink-0">
@@ -213,7 +213,7 @@ export default function ChecklistSettings({ items, tenderId, currentUserRole }: 
           </div>
           <ul className="divide-y divide-slate-100 dark:divide-zinc-800">
             {group2Items.map((item) => (
-              <li key={item.id} className="p-4 flex items-center justify-between hover:bg-slate-50/30 dark:hover:bg-zinc-800/10 text-xs">
+              <li key={item.id} className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between hover:bg-slate-50/30 dark:hover:bg-zinc-800/10 text-xs">
                 <div className="space-y-1">
                   <span className="font-semibold text-slate-800 dark:text-zinc-200 block">{item.label}</span>
                   <span className="text-[10px] text-amber-600 dark:text-amber-500 italic block">
@@ -255,7 +255,7 @@ export default function ChecklistSettings({ items, tenderId, currentUserRole }: 
           </div>
           <ul className="divide-y divide-slate-100 dark:divide-zinc-800">
             {group3Items.map((item) => (
-              <li key={item.id} className="p-4 flex items-center justify-between hover:bg-slate-50/30 dark:hover:bg-zinc-800/10 text-xs">
+              <li key={item.id} className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between hover:bg-slate-50/30 dark:hover:bg-zinc-800/10 text-xs">
                 <span className="font-semibold text-slate-800 dark:text-zinc-200">{item.label}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-indigo-600 dark:text-indigo-500 bg-indigo-500/10 px-2 py-0.5 border border-indigo-500/20 rounded font-bold uppercase shrink-0">
