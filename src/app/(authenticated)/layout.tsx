@@ -1,0 +1,43 @@
+import { auth } from '@/auth';
+import { redirect } from 'next/navigation';
+import Sidebar from '@/components/Sidebar';
+import { db, tenders, users } from '@/db';
+import { eq } from 'drizzle-orm';
+
+export default async function AuthenticatedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const session = await auth();
+  if (!session || !session.user) {
+    redirect('/login');
+  }
+
+  const userId = parseInt((session.user as any).id, 10);
+  
+  // Fetch user details from database for live profile info
+  const [dbUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!dbUser) {
+    redirect('/login');
+  }
+
+  // Fetch active tender
+  const [tender] = await db.select().from(tenders).limit(1);
+
+  const currentUser = {
+    nameEn: dbUser.nameEn,
+    email: dbUser.email,
+    role: dbUser.role,
+    mustChangePassword: dbUser.mustChangePassword,
+  };
+
+  return (
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 transition-colors duration-200">
+      <Sidebar tender={tender || null} currentUser={currentUser} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {children}
+      </div>
+    </div>
+  );
+}
