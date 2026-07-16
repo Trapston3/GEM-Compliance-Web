@@ -183,7 +183,7 @@ export default function BulkEmails({ tender, bidders, checklistItems, currentUse
       
       {/* Left Panel: Bidders list */}
       <div className="md:col-span-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-4 flex flex-col h-full overflow-hidden shadow-sm">
-        <h3 className="font-bold text-slate-800 dark:text-slate-250 text-xs uppercase tracking-wider mb-3 px-1">
+        <h3 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider mb-3 px-1">
           Bidders requiring queries ({biddersWithPendingQueries.length})
         </h3>
         
@@ -198,7 +198,7 @@ export default function BulkEmails({ tender, bidders, checklistItems, currentUse
                 className={`w-full text-left p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all duration-150 ${
                   isActive
                     ? 'bg-indigo-50 border-indigo-200 text-indigo-900 dark:bg-indigo-950/20 dark:border-indigo-900/60 dark:text-indigo-400'
-                    : 'bg-white border-slate-200 hover:border-slate-300 dark:bg-zinc-900 dark:border-zinc-850 dark:hover:border-zinc-700 text-slate-700 dark:text-zinc-350'
+                    : 'bg-white border-slate-200 hover:border-slate-300 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:border-zinc-700 text-slate-700 dark:text-zinc-300'
                 }`}
               >
                 <div className="overflow-hidden pr-2">
@@ -222,13 +222,13 @@ export default function BulkEmails({ tender, bidders, checklistItems, currentUse
         {activeBidder && activeDraft ? (
           <div className="flex-1 flex flex-col space-y-4 h-full min-h-0">
             {/* Active Header Info */}
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-850 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-800 pb-3">
               <div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">
                   Drafting compliance email for {activeBidder.name}
                 </h3>
                 <span className="text-[10px] text-slate-400">
-                  Recipient: <strong className="text-slate-650 dark:text-zinc-350">{activeBidder.contactPerson} &lt;{activeBidder.email}&gt;</strong>
+                  Recipient: <strong className="text-slate-600 dark:text-zinc-300">{activeBidder.contactPerson} &lt;{activeBidder.email}&gt;</strong>
                 </span>
               </div>
             </div>
@@ -250,12 +250,12 @@ export default function BulkEmails({ tender, bidders, checklistItems, currentUse
               <textarea
                 value={editedBody}
                 onChange={(e) => setEditedBody(e.target.value)}
-                className="w-full flex-1 text-xs p-3.5 bg-slate-50 dark:bg-zinc-955 border border-slate-200 dark:border-zinc-800 rounded-lg text-slate-800 dark:text-zinc-200 font-mono focus:outline-none leading-relaxed overflow-y-auto"
+                className="w-full flex-1 text-xs p-3.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-lg text-slate-800 dark:text-zinc-200 font-mono focus:outline-none leading-relaxed overflow-y-auto"
               />
             </div>
 
             {/* Footer Buttons */}
-            <div className="flex items-center justify-between border-t border-slate-100 dark:border-zinc-850 pt-3 shrink-0">
+            <div className="flex items-center justify-between border-t border-slate-100 dark:border-zinc-800 pt-3 shrink-0">
               <span className="text-[9px] text-slate-400">
                 * Review and customize before sending. Mailto link will open in local mail client (Outlook/Thunderbird).
               </span>

@@ -89,7 +89,7 @@ function DeviationTextInput({ bidderId, itemId, initialValue, onSave }: Deviatio
       onChange={(e) => setVal(e.target.value)}
       onBlur={handleSave}
       onKeyDown={handleKeyDown}
-      className="w-full text-xs p-1.5 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-zinc-250 border border-slate-200 dark:border-zinc-700 rounded focus:outline-none focus:border-indigo-500 font-medium"
+      className="w-full text-xs p-1.5 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-zinc-100 border border-slate-200 dark:border-zinc-700 rounded focus:outline-none focus:border-indigo-500 font-medium placeholder:text-slate-400 dark:placeholder:text-zinc-500"
       placeholder="Type custom deviations..."
     />
   );
@@ -531,7 +531,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
             className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
               activeTab === 'overview'
                 ? 'bg-white dark:bg-zinc-700 text-slate-800 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-250'
+                : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200'
             }`}
           >
             <BarChart3 size={14} />
@@ -542,7 +542,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
             className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
               activeTab === 'bidders'
                 ? 'bg-white dark:bg-zinc-700 text-slate-800 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-250'
+                : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200'
             }`}
           >
             <Users size={14} />
@@ -553,7 +553,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
             className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
               activeTab === 'matrix'
                 ? 'bg-white dark:bg-zinc-700 text-slate-800 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-250'
+                : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200'
             }`}
           >
             <Grid size={14} />
@@ -566,7 +566,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
           {activeTab === 'matrix' && (
             <button
               onClick={downloadExcel}
-              className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 font-semibold text-xs py-1.5 px-3.5 rounded-lg cursor-pointer transition-colors"
+              className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 font-semibold text-xs py-1.5 px-3.5 rounded-lg cursor-pointer transition-colors"
             >
               <Download size={13} /> Export Excel
             </button>
@@ -593,7 +593,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-5 rounded-2xl shadow-sm space-y-1">
                   <span className="text-[10px] uppercase font-bold text-slate-400">Total Bidders</span>
-                  <p className="text-3xl font-extrabold text-slate-850 dark:text-white">{stats.totalBidders}</p>
+                  <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{stats.totalBidders}</p>
                 </div>
                 <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-5 rounded-2xl shadow-sm space-y-1">
                   <span className="text-[10px] uppercase font-bold text-slate-400">Fully Compliant Bidders</span>
@@ -632,7 +632,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
                       title="Pending / Not Accepted"
                     />
                     <div 
-                      className="bg-slate-400 dark:bg-zinc-650 h-full transition-all duration-500" 
+                      className="bg-slate-400 dark:bg-zinc-600 h-full transition-all duration-500"
                       style={{ width: `${stats.totalCells > 0 ? (stats.naCells / stats.totalCells) * 100 : 0}%` }}
                       title="Not Applicable"
                     />
@@ -649,7 +649,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
                       <span>Pending/Observations: {stats.pendingCells} ({stats.totalCells > 0 ? Math.round((stats.pendingCells / stats.totalCells) * 100) : 0}%)</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 bg-slate-400 dark:bg-zinc-650 rounded-full" />
+                      <span className="w-3 h-3 bg-slate-400 dark:bg-zinc-600 rounded-full" />
                       <span>Not Applicable: {stats.naCells} ({stats.totalCells > 0 ? Math.round((stats.naCells / stats.totalCells) * 100) : 0}%)</span>
                     </div>
                   </div>
@@ -689,7 +689,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
                       {/* Header */}
                       <div>
                         <div className="flex items-start justify-between">
-                          <h4 className="font-bold text-sm text-slate-850 dark:text-white truncate max-w-[200px]" title={bidder.name}>
+                          <h4 className="font-bold text-sm text-slate-800 dark:text-white truncate max-w-[200px]" title={bidder.name}>
                             {bidder.name}
                           </h4>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
@@ -709,7 +709,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
                           <span>Progress</span>
                           <span>{details.progress}% Complete</span>
                         </div>
-                        <div className="h-2 w-full bg-slate-100 dark:bg-zinc-850 rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                           <div 
                             className="bg-indigo-600 h-full transition-all duration-300"
                             style={{ width: `${details.progress}%` }}
@@ -738,7 +738,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
                           </button>
                           <button
                             onClick={() => openEditModal(bidder)}
-                            className="p-1.5 border border-slate-200 dark:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-250 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
+                            className="p-1.5 border border-slate-200 dark:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
                             title="Edit Bidder"
                           >
                             <Edit2 size={12} />
@@ -769,14 +769,14 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
                   <thead>
                     <tr className="bg-slate-50 dark:bg-zinc-800/50 text-slate-500 dark:text-zinc-400">
                       {/* Sticky Top-Left Corner cell */}
-                      <th className="sticky left-0 top-0 z-35 bg-slate-50 dark:bg-zinc-850 p-4 font-bold text-left border-r border-b border-slate-250 dark:border-zinc-750 shadow-[inset_-1px_-1px_0_var(--border-color)]">
+                      <th className="sticky left-0 top-0 z-35 bg-slate-50 dark:bg-zinc-800 p-4 font-bold text-left border-r border-b border-slate-200 dark:border-zinc-700 shadow-[inset_-1px_-1px_0_var(--border-color)]">
                         Checklist Criteria / क्राइटेरिया
                       </th>
                       {/* Bidder Column Headers */}
                       {bidders.map(bidder => (
                         <th 
                           key={bidder.id} 
-                          className="sticky top-0 z-10 bg-slate-50 dark:bg-zinc-850 p-4 font-bold border-r border-b border-slate-250 dark:border-zinc-750 text-left min-w-[200px] shadow-[inset_0_-1px_0_var(--border-color)]"
+                          className="sticky top-0 z-10 bg-slate-50 dark:bg-zinc-800 p-4 font-bold border-r border-b border-slate-200 dark:border-zinc-700 text-left min-w-[200px] shadow-[inset_0_-1px_0_var(--border-color)]"
                         >
                           <div className="flex flex-col">
                             <span className="text-slate-800 dark:text-slate-100 font-extrabold truncate max-w-[180px]">{bidder.name}</span>
@@ -800,23 +800,25 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-zinc-850">
+                  <tbody className="divide-y divide-slate-200 dark:divide-zinc-800">
                     {checklistItems.map(item => {
                       const isSubmission = item.category === 'submission';
-                      const isCustomTextItem = item.label.toLowerCase() === 'any other deviations';
+                      const isCustomTextItem = item.category === 'text_note';
 
                       return (
                         <tr key={item.id} className="hover:bg-slate-50/20 dark:hover:bg-zinc-800/10">
                           {/* Sticky Left Criteria Label Column */}
-                          <td className="sticky left-0 z-20 bg-white dark:bg-zinc-900 p-4 border-r border-slate-250 dark:border-zinc-750 font-bold text-slate-800 dark:text-slate-200 shadow-[inset_-1px_0_0_var(--border-color)] max-w-[280px] break-words">
+                          <td className="sticky left-0 z-20 bg-white dark:bg-zinc-900 p-4 border-r border-slate-200 dark:border-zinc-700 font-bold text-slate-800 dark:text-slate-200 shadow-[inset_-1px_0_0_var(--border-color)] max-w-[280px] break-words">
                             <div className="space-y-1">
                               <span className="leading-tight block">{item.label}</span>
                               <span className={`inline-flex px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase ${
                                 isSubmission 
                                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
-                                  : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                                  : item.category === 'text_note'
+                                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                                    : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
                               }`}>
-                                {isSubmission ? 'Submission' : 'Acceptance'}
+                                {isSubmission ? 'Submission' : item.category === 'text_note' ? 'Text Note' : 'Acceptance'}
                               </span>
                             </div>
                           </td>
@@ -830,7 +832,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
                               return (
                                 <td 
                                   key={bidder.id} 
-                                  className="p-4 border-r border-slate-200 dark:border-zinc-850 bg-white dark:bg-zinc-900 min-w-[220px]"
+                                  className="p-4 border-r border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 min-w-[220px]"
                                 >
                                   <DeviationTextInput
                                     bidderId={bidder.id}
@@ -845,9 +847,9 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
                             return (
                               <td 
                                 key={bidder.id} 
-                                className="p-4 border-r border-slate-200 dark:border-zinc-850 bg-white dark:bg-zinc-900"
+                                className="p-4 border-r border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
                               >
-                                <div className="inline-flex bg-slate-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-slate-200 dark:border-zinc-750">
+                                <div className="inline-flex bg-slate-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-slate-200 dark:border-zinc-700">
                                   {isSubmission ? (
                                     <>
                                       <button
@@ -989,7 +991,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
             <button
               type="submit"
               disabled={isSaving}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-555 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               {isSaving && <Loader2 size={12} className="animate-spin" />}
               Create Bidder
@@ -1062,7 +1064,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
             <button
               type="submit"
               disabled={isSaving}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-555 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               {isSaving && <Loader2 size={12} className="animate-spin" />}
               Save Details
@@ -1082,7 +1084,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
           <p className="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed">
             Are you sure you want to delete bidder <strong>{deletingBidder?.name}</strong>?
           </p>
-          <p className="text-xs text-rose-500 font-bold bg-rose-955/20 border border-rose-900/30 p-2.5 rounded-lg">
+          <p className="text-xs text-rose-500 font-bold bg-rose-950/20 border border-rose-900/30 p-2.5 rounded-lg">
             ⚠️ This will permanently delete all of this bidder's records and compliance statuses. This action cannot be undone.
           </p>
           <div className="flex justify-end gap-3">
@@ -1096,7 +1098,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
             <button
               onClick={handleDeleteBidder}
               disabled={isSaving}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-555 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               {isSaving && <Loader2 size={12} className="animate-spin" />}
               Delete Bidder
@@ -1114,7 +1116,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
       >
         <div className="space-y-4">
           {tender.subjectLine === null && (
-            <div className="p-2 border border-amber-900/30 bg-amber-955/20 text-amber-500 rounded-lg text-[10px] font-bold">
+            <div className="p-2 border border-amber-900/30 bg-amber-950/20 text-amber-500 rounded-lg text-[10px] font-bold">
               ℹ️ Tip: Customize the formal Subject Line suffix on the sidebar settings panel.
             </div>
           )}
@@ -1125,7 +1127,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
               type="text"
               value={draftSubject}
               onChange={(e) => setDraftSubject(e.target.value)}
-              className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-950 border border-slate-250 dark:border-zinc-800 rounded-lg font-semibold text-slate-800 dark:text-white focus:outline-none"
+              className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-lg font-semibold text-slate-800 dark:text-white focus:outline-none"
             />
           </div>
 
@@ -1135,7 +1137,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
               value={draftBody}
               onChange={(e) => setDraftBody(e.target.value)}
               rows={15}
-              className="w-full text-xs p-3 bg-slate-50 dark:bg-zinc-955 border border-slate-250 dark:border-zinc-800 rounded-lg font-mono text-slate-800 dark:text-zinc-300 focus:outline-none leading-relaxed"
+              className="w-full text-xs p-3 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-lg font-mono text-slate-800 dark:text-zinc-300 focus:outline-none leading-relaxed"
             />
           </div>
 

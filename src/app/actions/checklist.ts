@@ -10,13 +10,13 @@ import { z } from 'zod';
 const AddChecklistItemSchema = z.object({
   tenderId: z.number(),
   label: z.string().min(1, "Label is required"),
-  category: z.enum(['submission', 'acceptance']),
+  category: z.enum(['submission', 'acceptance', 'text_note']),
 });
 
 const UpdateChecklistItemSchema = z.object({
   id: z.number(),
   label: z.string().min(1, "Label is required"),
-  category: z.enum(['submission', 'acceptance']),
+  category: z.enum(['submission', 'acceptance', 'text_note']),
 });
 
 export async function getChecklistItems(tenderId: number) {
@@ -32,7 +32,7 @@ export async function getChecklistItems(tenderId: number) {
     .orderBy(checklistItems.groupOrder, checklistItems.sortOrder);
 }
 
-export async function addChecklistItem(data: { tenderId: number; label: string; category: 'submission' | 'acceptance' }) {
+export async function addChecklistItem(data: { tenderId: number; label: string; category: 'submission' | 'acceptance' | 'text_note' }) {
   const session = await auth();
   if (!session) {
     throw new Error('Unauthorized');
@@ -41,7 +41,7 @@ export async function addChecklistItem(data: { tenderId: number; label: string; 
   const validated = AddChecklistItemSchema.parse(data);
 
   // Group order: Submission -> 1, Acceptance -> 3. (EMD is 2, but new user-added items default to group 1 for submission and 3 for acceptance).
-  const groupOrder = validated.category === 'acceptance' ? 3 : 1;
+  const groupOrder = validated.category === 'submission' ? 1 : 3;
 
   // Determine sort order (append to the end of the group)
   const existingGroupItems = await db
@@ -68,7 +68,7 @@ export async function addChecklistItem(data: { tenderId: number; label: string; 
 
   // Create default status for all existing bidders
   const bidderList = await db.select().from(bidders).where(eq(bidders.tenderId, validated.tenderId));
-  const defaultStatus = validated.category === 'acceptance' ? 'not_accepted' : 'not_submitted';
+  const defaultStatus = validated.category === 'submission' ? 'not_submitted' : '';
   const userId = parseInt((session.user as any).id, 10);
 
   for (const bidder of bidderList) {
@@ -91,7 +91,7 @@ export async function addChecklistItem(data: { tenderId: number; label: string; 
   return { success: true };
 }
 
-export async function updateChecklistItem(data: { id: number; label: string; category: 'submission' | 'acceptance' }) {
+export async function updateChecklistItem(data: { id: number; label: string; category: 'submission' | 'acceptance' | 'text_note' }) {
   const session = await auth();
   if (!session) {
     throw new Error('Unauthorized');
@@ -108,7 +108,7 @@ export async function updateChecklistItem(data: { id: number; label: string; cat
   const isCategoryChanged = oldItem.category !== validated.category;
 
   // Determine group order
-  const groupOrder = validated.category === 'acceptance' ? 3 : 1;
+  const groupOrder = validated.category === 'submission' ? 1 : 3;
 
   // Update
   await db.update(checklistItems)
@@ -121,7 +121,7 @@ export async function updateChecklistItem(data: { id: number; label: string; cat
 
   // Handle category change: reset all bidder statuses for this item to the new category's default
   if (isCategoryChanged) {
-    const defaultStatus = validated.category === 'acceptance' ? 'not_accepted' : 'not_submitted';
+    const defaultStatus = validated.category === 'submission' ? 'not_submitted' : '';
     
     await db.update(bidderStatuses)
       .set({

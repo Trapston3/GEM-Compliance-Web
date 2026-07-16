@@ -143,7 +143,7 @@ const checklistItemsToSeed = [
   { label: "PAYMENT TERMS AS PER GeM", category: "acceptance", groupOrder: 3, sortOrder: 12 },
   { label: "DELIVERY PERIOD AS PER TERMS AND CONDITIONS", category: "acceptance", groupOrder: 3, sortOrder: 13 },
   { label: "OFFER VALIDITY", category: "acceptance", groupOrder: 3, sortOrder: 14 },
-  { label: "ANY OTHER DEVIATIONS", category: "acceptance", groupOrder: 3, sortOrder: 15 }
+  { label: "ANY OTHER DEVIATIONS", category: "text_note", groupOrder: 3, sortOrder: 15 }
 ];
 
 async function seed() {

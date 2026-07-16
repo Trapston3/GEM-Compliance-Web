@@ -42,7 +42,7 @@ export default function ChecklistSettings({ items, tenderId, currentUserRole }: 
 
   // Form states
   const [label, setLabel] = useState('');
-  const [category, setCategory] = useState<'submission' | 'acceptance'>('submission');
+  const [category, setCategory] = useState<'submission' | 'acceptance' | 'text_note'>('submission');
   
   // Category change warning state
   const [showCategoryWarning, setShowCategoryWarning] = useState(false);
@@ -180,11 +180,11 @@ export default function ChecklistSettings({ items, tenderId, currentUserRole }: 
                 <span className="font-semibold text-slate-800 dark:text-zinc-200">{item.label}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-emerald-600 dark:text-emerald-500 bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/20 rounded font-bold uppercase shrink-0">
-                    Submission
+                    {item.category === 'text_note' ? 'Text Note' : 'Submission'}
                   </span>
                   <button
                     onClick={() => openEditModal(item)}
-                    className="p-1 border border-slate-200 dark:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-250 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded cursor-pointer"
+                    className="p-1 border border-slate-200 dark:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded cursor-pointer"
                     title="Edit Item"
                   >
                     <Edit2 size={12} />
@@ -222,11 +222,11 @@ export default function ChecklistSettings({ items, tenderId, currentUserRole }: 
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-emerald-600 dark:text-emerald-500 bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/20 rounded font-bold uppercase shrink-0">
-                    Submission
+                    {item.category === 'text_note' ? 'Text Note' : 'Submission'}
                   </span>
                   <button
                     onClick={() => openEditModal(item)}
-                    className="p-1 border border-slate-200 dark:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-250 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded cursor-pointer"
+                    className="p-1 border border-slate-200 dark:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded cursor-pointer"
                     title="Edit Item"
                   >
                     <Edit2 size={12} />
@@ -259,11 +259,11 @@ export default function ChecklistSettings({ items, tenderId, currentUserRole }: 
                 <span className="font-semibold text-slate-800 dark:text-zinc-200">{item.label}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-indigo-600 dark:text-indigo-500 bg-indigo-500/10 px-2 py-0.5 border border-indigo-500/20 rounded font-bold uppercase shrink-0">
-                    Acceptance
+                    {item.category === 'text_note' ? 'Text Note' : 'Acceptance'}
                   </span>
                   <button
                     onClick={() => openEditModal(item)}
-                    className="p-1 border border-slate-200 dark:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-250 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded cursor-pointer"
+                    className="p-1 border border-slate-200 dark:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded cursor-pointer"
                     title="Edit Item"
                   >
                     <Edit2 size={12} />
@@ -310,10 +310,11 @@ export default function ChecklistSettings({ items, tenderId, currentUserRole }: 
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as any)}
-              className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-800 text-slate-850 dark:text-zinc-355 border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500 cursor-pointer"
+              className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500 cursor-pointer"
             >
               <option value="submission">Document Submission (default status: Pending)</option>
               <option value="acceptance">Tender Clause Acceptance (default status: Not Accepted)</option>
+              <option value="text_note">Free-text Deviation Note</option>
             </select>
           </div>
 
@@ -328,7 +329,7 @@ export default function ChecklistSettings({ items, tenderId, currentUserRole }: 
             <button
               type="submit"
               disabled={isSaving}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-555 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               {isSaving && <Loader2 size={12} className="animate-spin" />}
               Add Criteria
@@ -361,10 +362,11 @@ export default function ChecklistSettings({ items, tenderId, currentUserRole }: 
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as any)}
-              className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-800 text-slate-855 dark:text-zinc-355 border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500 cursor-pointer"
+              className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500 cursor-pointer"
             >
               <option value="submission">Document Submission</option>
               <option value="acceptance">Tender Clause Acceptance</option>
+              <option value="text_note">Free-text Deviation Note</option>
             </select>
           </div>
 
@@ -398,7 +400,7 @@ export default function ChecklistSettings({ items, tenderId, currentUserRole }: 
               type="submit"
               disabled={isSaving}
               className={`px-4 py-2 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 ${
-                showCategoryWarning ? 'bg-rose-600 hover:bg-rose-555' : 'bg-indigo-600 hover:bg-indigo-555'
+                showCategoryWarning ? 'bg-rose-600 hover:bg-rose-500' : 'bg-indigo-600 hover:bg-indigo-500'
               }`}
             >
               {isSaving && <Loader2 size={12} className="animate-spin" />}
@@ -440,7 +442,7 @@ export default function ChecklistSettings({ items, tenderId, currentUserRole }: 
             <button
               onClick={handleDeleteSubmit}
               disabled={isSaving}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-555 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               {isSaving && <Loader2 size={12} className="animate-spin" />}
               Delete Criteria

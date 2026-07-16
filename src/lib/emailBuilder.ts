@@ -48,7 +48,7 @@ export function buildEmailBody(
   // Filter items that are pending
   const pendingItems = sortedItems.filter(item => {
     const status = statuses[item.id];
-    const isCustomTextItem = item.label.toLowerCase() === 'any other deviations';
+    const isCustomTextItem = item.category === 'text_note';
     if (isCustomTextItem) {
       return !!status && status !== 'accepted' && status !== 'not_applicable' && status.trim() !== '';
     }
@@ -98,7 +98,7 @@ export function buildEmailBody(
       body += `B) Deviations are observed in the following clauses:\n`;
       
       for (const item of sectionBItems) {
-        const isCustomTextItem = item.label.toLowerCase() === 'any other deviations';
+        const isCustomTextItem = item.category === 'text_note';
         if (isCustomTextItem) {
           const customDeviationText = statuses[item.id];
           body += `${numberCounter}. Regarding "ANY OTHER DEVIATIONS": ${customDeviationText}\n`;

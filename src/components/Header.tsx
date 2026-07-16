@@ -36,7 +36,7 @@ export default function Header({ title, currentUser }: HeaderProps) {
         <button
           onClick={toggleTheme}
           aria-label="Toggle theme"
-          className="p-2 border border-slate-200 dark:border-zinc-700 rounded-lg text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-850 cursor-pointer transition-all duration-200 focus:outline-none"
+          className="p-2 border border-slate-200 dark:border-zinc-700 rounded-lg text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer transition-all duration-200 focus:outline-none"
         >
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>

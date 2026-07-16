@@ -296,7 +296,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-55 dark:bg-zinc-800/50 text-slate-500 dark:text-zinc-400 border-b border-slate-200 dark:border-zinc-800">
+                    <tr className="bg-slate-50 dark:bg-zinc-800/50 text-slate-500 dark:text-zinc-400 border-b border-slate-200 dark:border-zinc-800">
                       <th className="p-4 font-semibold">User Details</th>
                       <th className="p-4 font-semibold">Designation (English / Hindi)</th>
                       <th className="p-4 font-semibold">Contact</th>
@@ -348,7 +348,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => openEditModal(user)}
-                              className="p-1.5 border border-slate-200 dark:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-250 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
+                              className="p-1.5 border border-slate-200 dark:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
                               title="Edit User Details"
                             >
                               <Edit2 size={12} />
@@ -358,7 +358,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
                                 setResettingUser(user);
                                 setGeneratedPassword(null);
                               }}
-                              className="p-1.5 border border-slate-200 dark:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-250 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
+                              className="p-1.5 border border-slate-200 dark:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
                               title="Reset Password"
                             >
                               <Key size={12} />
@@ -399,7 +399,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
                   <select
                     value={selectedUserFilter}
                     onChange={(e) => setSelectedUserFilter(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-zinc-800/50 text-xs border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500 text-slate-850 dark:text-zinc-300 cursor-pointer"
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-zinc-800/50 text-xs border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-zinc-300 cursor-pointer"
                   >
                     <option value="all">All Users</option>
                     {usersList.map(u => (
@@ -440,7 +440,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
                 <div className="overflow-y-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-slate-55 dark:bg-zinc-800/50 text-slate-500 dark:text-zinc-400 border-b border-slate-200 dark:border-zinc-800 sticky top-0 z-10 shadow-sm">
+                      <tr className="bg-slate-50 dark:bg-zinc-800/50 text-slate-500 dark:text-zinc-400 border-b border-slate-200 dark:border-zinc-800 sticky top-0 z-10 shadow-sm">
                         <th className="p-4 font-semibold w-40">Timestamp</th>
                         <th className="p-4 font-semibold w-48">Operator</th>
                         <th className="p-4 font-semibold w-48">Action</th>
@@ -464,7 +464,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
                               <span className="font-bold text-slate-800 dark:text-slate-200 block">
                                 {log.userName || 'System Action'}
                               </span>
-                              <span className="text-[10px] text-slate-550 block">
+                              <span className="text-[10px] text-slate-500 block">
                                 {log.userEmail || ''}
                               </span>
                             </td>
@@ -567,7 +567,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
             <select
               value={editRole}
               onChange={(e) => setEditRole(e.target.value as any)}
-              className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-800 text-slate-850 dark:text-zinc-350 border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500 cursor-pointer"
+              className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500 cursor-pointer"
             >
               <option value="user">User (Standard Materials Officer)</option>
               <option value="superuser">Superuser (Department Administrator)</option>
@@ -586,7 +586,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
             <button
               type="submit"
               disabled={isSaving}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-550 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               {isSaving && <Loader2 size={12} className="animate-spin" />}
               Save Details
@@ -625,7 +625,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
                 <button
                   onClick={() => handleResetPassword(resettingUser!.id)}
                   disabled={isSaving}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-550 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   {isSaving && <Loader2 size={12} className="animate-spin" />}
                   Confirm Reset
@@ -637,7 +637,7 @@ export default function AdminDashboard({ initialUsers, initialLogs, currentUser 
               <p className="text-xs text-slate-600 dark:text-zinc-400">
                 Password reset completed. Copy the temporary password below:
               </p>
-              <div className="bg-slate-100 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-850 p-4 rounded-lg flex items-center justify-between">
+              <div className="bg-slate-100 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 p-4 rounded-lg flex items-center justify-between">
                 <code className="text-sm font-bold text-rose-600 select-all tracking-wider font-mono">
                   {generatedPassword}
                 </code>

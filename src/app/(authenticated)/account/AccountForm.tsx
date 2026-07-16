@@ -69,7 +69,8 @@ export default function AccountForm({ user }: AccountFormProps) {
         setNewPassword('');
         setConfirmPassword('');
 
-        router.refresh();
+        // Force a hard reload to / to guarantee the new session cookie is sent to Vercel/middleware
+        window.location.href = '/';
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'An error occurred while updating.');
@@ -149,7 +150,7 @@ export default function AccountForm({ user }: AccountFormProps) {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-zinc-850 text-xs border border-slate-200 dark:border-zinc-750 rounded-lg focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white"
+                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-zinc-800 text-xs border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white"
                 />
               </div>
             </div>
@@ -167,7 +168,7 @@ export default function AccountForm({ user }: AccountFormProps) {
                   required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-zinc-850 text-xs border border-slate-200 dark:border-zinc-750 rounded-lg focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white"
+                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-zinc-800 text-xs border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white"
                 />
               </div>
             </div>
@@ -191,7 +192,7 @@ export default function AccountForm({ user }: AccountFormProps) {
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-zinc-850 text-xs border border-slate-200 dark:border-zinc-750 rounded-lg focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white"
+                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-zinc-800 text-xs border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white"
                   required={email !== user.email || !!newPassword}
                 />
               </div>
@@ -210,7 +211,7 @@ export default function AccountForm({ user }: AccountFormProps) {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-zinc-850 text-xs border border-slate-200 dark:border-zinc-750 rounded-lg focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white"
+                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-zinc-800 text-xs border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white"
                 />
               </div>
             </div>
@@ -228,7 +229,7 @@ export default function AccountForm({ user }: AccountFormProps) {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-zinc-850 text-xs border border-slate-200 dark:border-zinc-750 rounded-lg focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white"
+                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-zinc-800 text-xs border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white"
                 />
               </div>
             </div>

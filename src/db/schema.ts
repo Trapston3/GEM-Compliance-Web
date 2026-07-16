@@ -5,7 +5,7 @@ import { relations } from 'drizzle-orm';
 export const roleEnum = pgEnum('role', ['user', 'superuser', 'guest']);
 
 // Define Checklist Category Enum
-export const categoryEnum = pgEnum('category', ['submission', 'acceptance']);
+export const categoryEnum = pgEnum('category', ['submission', 'acceptance', 'text_note']);
 
 // Users Table
 export const users = pgTable('users', {

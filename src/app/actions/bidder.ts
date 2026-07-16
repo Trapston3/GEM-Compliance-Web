@@ -176,7 +176,7 @@ export async function updateBidderStatus(data: { bidderId: number; checklistItem
   }
 
   // 2. Validate status value against category server-side
-  const isCustomTextItem = item.label.toLowerCase() === 'any other deviations';
+  const isCustomTextItem = item.category === 'text_note';
   if (isCustomTextItem) {
     if (validated.status.length > 1000) {
       throw new Error('Deviation details must be under 1000 characters');

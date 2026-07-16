@@ -141,7 +141,7 @@ export default function Sidebar({ tender, currentUser }: SidebarProps) {
                   className={`flex items-center gap-3 px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${
                     isActive
                       ? 'bg-indigo-600 text-white'
-                      : 'hover:bg-slate-850 text-slate-400 hover:text-slate-200'
+                      : 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'
                   }`}
                 >
                   <Icon size={16} />
@@ -156,7 +156,7 @@ export default function Sidebar({ tender, currentUser }: SidebarProps) {
                 className={`flex items-center gap-3 px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${
                   pathname === '/admin'
                     ? 'bg-rose-600 text-white'
-                    : 'hover:bg-slate-850 text-rose-400 hover:text-rose-300'
+                    : 'hover:bg-slate-800 text-rose-400 hover:text-rose-300'
                 }`}
               >
                 <ShieldAlert size={16} />
