@@ -1,28 +1,13 @@
 import type { NextAuthConfig } from 'next-auth';
 
 export const authConfig = {
+  trustHost: true,
   pages: {
     signIn: '/login',
   },
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
-      const isApiRoute = nextUrl.pathname.startsWith('/api');
-      const isLoginRoute = nextUrl.pathname === '/login';
-      const isPublicAsset = nextUrl.pathname.startsWith('/favicon.ico') || nextUrl.pathname.startsWith('/_next') || nextUrl.pathname.startsWith('/static');
-
-      if (isPublicAsset || isApiRoute) {
-        return true;
-      }
-
-      if (isLoginRoute) {
-        if (isLoggedIn) {
-          return Response.redirect(new URL('/', nextUrl));
-        }
-        return true;
-      }
-
-      return isLoggedIn;
+      return true;
     },
     jwt({ token, user, trigger, session }) {
       if (user) {
