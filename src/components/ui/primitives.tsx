@@ -231,7 +231,7 @@ export function Tabs({
 // ==========================================
 export function Skeleton({ className = '' }: { className?: string }) {
   return (
-    <div className={`animate-pulse rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] ${className}`} />
+    <div className={`animate-shimmer rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] ${className}`} />
   );
 }
 

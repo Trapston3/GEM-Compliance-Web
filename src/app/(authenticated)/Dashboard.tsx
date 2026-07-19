@@ -403,12 +403,21 @@ export default function Dashboard({ view, tender, bidders: initialBidders, check
   };
 
   const downloadExcel = () => {
-    const wsData = [];
-    const headers = ["Checklist Item", "Category", ...bidders.map(b => b.name)];
+    const wsData: string[][] = [];
+
+    // 1. Bidder Contact Information Header Block (for self-contained round-trip import)
+    wsData.push(["Bidder Name / बोलीदाता का नाम", "Contact Field", ...bidders.map(b => b.name)]);
+    wsData.push(["Email Address / ईमेल", "Contact Field", ...bidders.map(b => b.email)]);
+    wsData.push(["Contact Person / संपर्क व्यक्ति", "Contact Field", ...bidders.map(b => b.contactPerson)]);
+    wsData.push(["Phone Number / फोन नंबर", "Contact Field", ...bidders.map(b => b.phone)]);
+    wsData.push([]); // Blank separator row
+
+    // 2. Compliance Matrix Header Row
+    const headers = ["Checklist Item / क्राइटेरिया", "Category / श्रेणी", ...bidders.map(b => b.name)];
     wsData.push(headers);
 
     checklistItems.forEach(item => {
-      const row = [item.label, item.category === 'submission' ? 'Submission' : 'Acceptance'];
+      const row = [item.label, item.category === 'submission' ? 'Submission / प्रलेख' : item.category === 'acceptance' ? 'Acceptance / नियम' : 'Note / टिप्पणी'];
       bidders.forEach(bidder => {
         const statusObj = bidder.statuses.find(s => s.checklistItemId === item.id);
         const status = statusObj?.status;
@@ -417,10 +426,12 @@ export default function Dashboard({ view, tender, bidders: initialBidders, check
           if (status === 'submitted') labelText = 'Submitted';
           else if (status === 'not_applicable') labelText = 'N/A';
           else labelText = 'Pending';
-        } else {
+        } else if (item.category === 'acceptance') {
           if (status === 'accepted') labelText = 'Accepted';
           else if (status === 'not_applicable') labelText = 'N/A';
           else labelText = 'Not Accepted';
+        } else {
+          labelText = status || '';
         }
         row.push(labelText);
       });
@@ -739,6 +750,7 @@ export default function Dashboard({ view, tender, bidders: initialBidders, check
         isOpen={isImporting}
         onClose={() => setIsImporting(false)}
         tenderId={tender.id}
+        checklistLabels={checklistItems.map(i => i.label)}
         onSuccess={() => router.refresh()}
       />
     </div>

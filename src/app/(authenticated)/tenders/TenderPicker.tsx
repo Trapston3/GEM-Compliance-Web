@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Archive, ArrowUpDown, FilePlus2, FolderOpen, Search, RotateCcw, X, Layers, Copy, History } from 'lucide-react';
 import { createTender } from '@/app/actions/tender';
 import { useToast } from '@/components/ui/toast';
@@ -160,55 +161,78 @@ export default function TenderPicker({
             }
           />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <motion.div
+            initial="hidden"
+            animate="show"
+            variants={{
+              hidden: { opacity: 0 },
+              show: {
+                opacity: 1,
+                transition: { staggerChildren: 0.05 }
+              }
+            }}
+            className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+          >
             {list.map((tender) => {
               const isOtherOwner = isSuperuser && tender.ownerId !== currentUserId;
               return (
-                <Card key={tender.id} hoverable className="flex min-h-64 flex-col p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="rounded-[var(--radius-sm)] bg-[var(--brand-primary)]/10 p-2.5 text-[var(--brand-primary)]">
-                      <FolderOpen size={20} />
-                    </div>
-                    <Badge tone={tender.status === 'active' ? 'success' : 'neutral'}>
-                      {tender.status === 'active' ? 'Active' : 'Archived'}
-                    </Badge>
-                  </div>
-
-                  <div className="mt-5 min-w-0 flex-1">
-                    <h2 className="truncate text-lg font-bold text-[var(--text-primary)]">{tender.name}</h2>
-                    <p className="mt-1 line-clamp-2 min-h-10 text-sm text-[var(--text-muted)]">
-                      {tender.subjectLine || 'No subject line specified'}
-                    </p>
-                    {isOtherOwner && (
-                      <p className="mt-3 text-xs font-semibold text-[var(--status-note)]">
-                        Owner: {tender.ownerName || 'Another user'}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[var(--border-subtle)] pt-4 text-xs">
+                <motion.div
+                  key={tender.id}
+                  variants={{
+                    hidden: { opacity: 0, y: 12 },
+                    show: { opacity: 1, y: 0, transition: { duration: 0.25 } }
+                  }}
+                >
+                  <Card hoverable className="flex min-h-64 flex-col p-5 h-full justify-between">
                     <div>
-                      <span className="block text-[var(--text-muted)]">Bidders</span>
-                      <strong className="text-sm text-[var(--text-primary)]">{tender.bidderCount ?? 0}</strong>
-                    </div>
-                    <div>
-                      <span className="block text-[var(--text-muted)]">Checklist Items</span>
-                      <strong className="text-sm text-[var(--text-primary)]">{tender.checklistCount ?? 0}</strong>
-                    </div>
-                  </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="rounded-[var(--radius-sm)] bg-[var(--brand-primary)]/10 p-2.5 text-[var(--brand-primary)]">
+                          <FolderOpen size={20} />
+                        </div>
+                        <Badge tone={tender.status === 'active' ? 'success' : 'neutral'}>
+                          {tender.status === 'active' ? 'Active' : 'Archived'}
+                        </Badge>
+                      </div>
 
-                  <div className="mt-4 flex items-center justify-between gap-3 pt-2">
-                    <span className="text-xs text-[var(--text-muted)]">
-                      Updated {new Date(tender.updatedAt).toLocaleDateString()}
-                    </span>
-                    <Link href={`/tenders/${tender.id}/overview`}>
-                      <Button size="sm">Open Tender</Button>
-                    </Link>
-                  </div>
-                </Card>
+                      <div className="mt-5 min-w-0 flex-1">
+                        <h2 className="truncate text-lg font-bold text-[var(--text-primary)]">{tender.name}</h2>
+                        <p className="mt-1 line-clamp-2 min-h-10 text-sm text-[var(--text-muted)]">
+                          {tender.subjectLine || 'No subject line specified'}
+                        </p>
+                        {isOtherOwner && (
+                          <p className="mt-3 text-xs font-semibold text-[var(--status-note)]">
+                            Owner: {tender.ownerName || 'Another user'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[var(--border-subtle)] pt-4 text-xs">
+                        <div>
+                          <span className="block text-[var(--text-muted)]">Bidders</span>
+                          <strong className="text-sm text-[var(--text-primary)]">{tender.bidderCount ?? 0}</strong>
+                        </div>
+                        <div>
+                          <span className="block text-[var(--text-muted)]">Checklist Items</span>
+                          <strong className="text-sm text-[var(--text-primary)]">{tender.checklistCount ?? 0}</strong>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between gap-3 pt-2">
+                        <span className="text-xs text-[var(--text-muted)]">
+                          Updated {new Date(tender.updatedAt).toLocaleDateString()}
+                        </span>
+                        <Link href={`/tenders/${tender.id}/overview`}>
+                          <Button size="sm">Open Tender</Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </div>
 
@@ -231,120 +255,126 @@ export default function TenderPicker({
             onChange={(e) => setSubjectLine(e.target.value)}
           />
 
+          {/* 3-Way Segmented Slider Section */}
           <div className="space-y-3 pt-2">
             <label className="block text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">
-              Starting Point Checklist
+              Starting Point Checklist Profile
             </label>
 
-            <div className="space-y-2">
-              {/* Option 1: Master Default Template */}
-              <label
-                className={`flex items-start gap-3 p-3.5 rounded-[var(--radius-sm)] border cursor-pointer transition-colors ${
-                  sourceType === 'master'
-                    ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]/5'
-                    : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-subtle)]'
+            {/* Always-Visible 3-Option Segmented Control Bar */}
+            <div className="grid grid-cols-3 gap-1 rounded-[var(--radius-md)] bg-[var(--bg-subtle)] p-1.5 border border-[var(--border-subtle)] relative">
+              <button
+                type="button"
+                onClick={() => setSourceType('master')}
+                className={`relative flex items-center justify-center gap-1.5 px-2 py-2.5 text-xs font-bold transition-colors cursor-pointer select-none rounded-[var(--radius-sm)] ${
+                  sourceType === 'master' ? 'text-[var(--brand-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                 }`}
               >
-                <input
-                  type="radio"
-                  name="sourceType"
-                  checked={sourceType === 'master'}
-                  onChange={() => setSourceType('master')}
-                  className="mt-0.5 accent-[var(--brand-primary)] cursor-pointer"
-                />
+                {sourceType === 'master' && (
+                  <motion.div
+                    layoutId="startingPointTab"
+                    className="absolute inset-0 rounded-[var(--radius-sm)] bg-[var(--bg-surface)] shadow-xs border border-[var(--border-subtle)]"
+                    transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-1.5 truncate">
+                  <Layers size={14} /> Master Template
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSourceType('duplicate')}
+                className={`relative flex items-center justify-center gap-1.5 px-2 py-2.5 text-xs font-bold transition-colors cursor-pointer select-none rounded-[var(--radius-sm)] ${
+                  sourceType === 'duplicate' ? 'text-[var(--brand-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                {sourceType === 'duplicate' && (
+                  <motion.div
+                    layoutId="startingPointTab"
+                    className="absolute inset-0 rounded-[var(--radius-sm)] bg-[var(--bg-surface)] shadow-xs border border-[var(--border-subtle)]"
+                    transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-1.5 truncate">
+                  <Copy size={14} /> Duplicate Tender
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSourceType('archived')}
+                className={`relative flex items-center justify-center gap-1.5 px-2 py-2.5 text-xs font-bold transition-colors cursor-pointer select-none rounded-[var(--radius-sm)] ${
+                  sourceType === 'archived' ? 'text-[var(--brand-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                {sourceType === 'archived' && (
+                  <motion.div
+                    layoutId="startingPointTab"
+                    className="absolute inset-0 rounded-[var(--radius-sm)] bg-[var(--bg-surface)] shadow-xs border border-[var(--border-subtle)]"
+                    transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-1.5 truncate">
+                  <History size={14} /> Archived Template
+                </span>
+              </button>
+            </div>
+
+            {/* Details & Sub-selectors for selected option */}
+            <div className="p-4 rounded-[var(--radius-sm)] bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-3 min-h-24">
+              {sourceType === 'master' && (
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 font-bold text-sm text-[var(--text-primary)]">
-                    <Layers size={16} className="text-[var(--brand-primary)]" />
-                    <span>Master Template (Default)</span>
-                  </div>
+                  <p className="text-xs font-semibold text-[var(--text-primary)]">
+                    Default Master Profile: <strong>{defaultTemplate ? defaultTemplate.name : 'Standard MRPL Checklist'}</strong>
+                  </p>
                   <p className="text-xs text-[var(--text-muted)]">
-                    Use the active company-wide master checklist template (
-                    {defaultTemplate ? defaultTemplate.name : 'Standard MRPL Checklist'}).
+                    {defaultTemplate?.description || 'Pre-populates standard technical submissions, EMD guarantees, and commercial clauses.'}
                   </p>
                 </div>
-              </label>
+              )}
 
-              {/* Option 2: Duplicate Existing Tender */}
-              <label
-                className={`flex items-start gap-3 p-3.5 rounded-[var(--radius-sm)] border cursor-pointer transition-colors ${
-                  sourceType === 'duplicate'
-                    ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]/5'
-                    : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-subtle)]'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="sourceType"
-                  checked={sourceType === 'duplicate'}
-                  onChange={() => setSourceType('duplicate')}
-                  className="mt-0.5 accent-[var(--brand-primary)] cursor-pointer"
-                />
-                <div className="space-y-2 w-full">
-                  <div className="flex items-center gap-2 font-bold text-sm text-[var(--text-primary)]">
-                    <Copy size={16} className="text-[var(--brand-primary)]" />
-                    <span>Duplicate an Existing Tender</span>
-                  </div>
-                  <p className="text-xs text-[var(--text-muted)]">
-                    Copy verification criteria from one of your previously configured tenders.
+              {sourceType === 'duplicate' && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-[var(--text-primary)]">
+                    Copy verification criteria from one of your active or archived tenders:
                   </p>
-                  {sourceType === 'duplicate' && (
-                    <Select
-                      required
-                      value={sourceTenderId}
-                      onChange={(e) => setSourceTenderId(e.target.value)}
-                    >
-                      <option value="">Choose a tender to copy criteria from...</option>
-                      {initialTenders
-                        .filter((t) => t.ownerId === currentUserId || isSuperuser)
-                        .map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                    </Select>
-                  )}
-                </div>
-              </label>
-
-              {/* Option 3: Choose Archived Template */}
-              <label
-                className={`flex items-start gap-3 p-3.5 rounded-[var(--radius-sm)] border cursor-pointer transition-colors ${
-                  sourceType === 'archived'
-                    ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]/5'
-                    : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-subtle)]'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="sourceType"
-                  checked={sourceType === 'archived'}
-                  onChange={() => setSourceType('archived')}
-                  className="mt-0.5 accent-[var(--brand-primary)] cursor-pointer"
-                />
-                <div className="space-y-2 w-full">
-                  <div className="flex items-center gap-2 font-bold text-sm text-[var(--text-primary)]">
-                    <History size={16} className="text-[var(--brand-primary)]" />
-                    <span>Choose an Archived Template</span>
-                  </div>
-                  <p className="text-xs text-[var(--text-muted)]">
-                    Select a prior version or custom archived template profile.
-                  </p>
-                  {sourceType === 'archived' && (
-                    <Select
-                      required
-                      value={archivedTemplateId}
-                      onChange={(e) => setArchivedTemplateId(e.target.value)}
-                    >
-                      <option value="">Select an archived template profile...</option>
-                      {archivedTemplates.map((t) => (
+                  <Select
+                    required
+                    value={sourceTenderId}
+                    onChange={(e) => setSourceTenderId(e.target.value)}
+                  >
+                    <option value="">Choose a tender to copy criteria from...</option>
+                    {initialTenders
+                      .filter((t) => t.ownerId === currentUserId || isSuperuser)
+                      .map((t) => (
                         <option key={t.id} value={t.id}>
-                          {t.name}
+                          {t.name} ({t.checklistCount ?? 0} items)
                         </option>
                       ))}
-                    </Select>
-                  )}
+                  </Select>
                 </div>
-              </label>
+              )}
+
+              {sourceType === 'archived' && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-[var(--text-primary)]">
+                    Select a prior version or custom archived template profile:
+                  </p>
+                  <Select
+                    required
+                    value={archivedTemplateId}
+                    onChange={(e) => setArchivedTemplateId(e.target.value)}
+                  >
+                    <option value="">Select an archived template profile...</option>
+                    {archivedTemplates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
 

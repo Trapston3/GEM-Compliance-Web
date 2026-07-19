@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, Trash2, Loader2, Info } from 'lucide-react';
-import { Dialog, Button, Badge, Card, Input } from '@/components/ui/primitives';
+import { Upload, FileSpreadsheet, Trash2, Info, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Dialog } from '@/components/ui/dialog';
+import { Button, Badge, Card, Select } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/toast';
 import { importBidders } from '@/app/actions/bidder';
 import * as XLSX from 'xlsx';
@@ -18,20 +19,242 @@ interface ParsedBidderRow {
   selected: boolean;
 }
 
+interface ColumnDetectionInfo {
+  columnIndex: number;
+  headerName: string;
+  field: 'name' | 'email' | 'contactPerson' | 'phone' | 'excluded';
+  confidence: 'high' | 'medium' | 'low';
+  reasoning: string;
+}
+
 interface BidderImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   tenderId: number;
   onSuccess: () => void;
+  checklistLabels?: string[];
 }
 
-export default function BidderImportModal({ isOpen, onClose, tenderId, onSuccess }: BidderImportModalProps) {
+export default function BidderImportModal({
+  isOpen,
+  onClose,
+  tenderId,
+  onSuccess,
+  checklistLabels = [],
+}: BidderImportModalProps) {
   const { toast } = useToast();
   const [rows, setRows] = useState<ParsedBidderRow[]>([]);
+  const [detections, setDetections] = useState<ColumnDetectionInfo[]>([]);
   const [fileName, setFileName] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Parse CSV/Excel file
+  // Local Heuristic Column Auto-Detector & Checklist Guard
+  const detectColumnsAndParse = (dataArray: any[][]) => {
+    if (dataArray.length === 0) return { parsedRows: [], detectionsList: [] };
+
+    // Check if uploaded file is an exported Compliance Matrix with transposed Contact Block
+    const firstRowStr = dataArray[0]?.join(' ').toLowerCase() || '';
+    const isTransposedExport = firstRowStr.includes('bidder name') || firstRowStr.includes('बोलीदाता');
+
+    if (isTransposedExport) {
+      // Round-Trip Parser for Exported Matrix
+      let nameRowIdx = -1, emailRowIdx = -1, contactRowIdx = -1, phoneRowIdx = -1;
+      
+      dataArray.slice(0, 10).forEach((row, idx) => {
+        const rowLabel = String(row[0] || '').toLowerCase();
+        if (rowLabel.includes('bidder name') || rowLabel.includes('बोलीदाता')) nameRowIdx = idx;
+        else if (rowLabel.includes('email') || rowLabel.includes('ईमेल')) emailRowIdx = idx;
+        else if (rowLabel.includes('contact person') || rowLabel.includes('संपर्क')) contactRowIdx = idx;
+        else if (rowLabel.includes('phone') || rowLabel.includes('फोन')) phoneRowIdx = idx;
+      });
+
+      if (nameRowIdx !== -1) {
+        const bidderCols = dataArray[nameRowIdx].length;
+        const parsedRows: ParsedBidderRow[] = [];
+
+        for (let col = 2; col < bidderCols; col++) {
+          const name = String(dataArray[nameRowIdx]?.[col] || '').trim();
+          const email = emailRowIdx !== -1 ? String(dataArray[emailRowIdx]?.[col] || '').trim() : '';
+          const contactPerson = contactRowIdx !== -1 ? String(dataArray[contactRowIdx]?.[col] || '').trim() : '';
+          const phone = phoneRowIdx !== -1 ? String(dataArray[phoneRowIdx]?.[col] || '').trim() : '';
+
+          if (!name && !email) continue;
+
+          const errors: string[] = [];
+          if (!name) errors.push('Missing Bidder Name');
+          if (!email) errors.push('Missing Email');
+          else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Invalid Email Format');
+          if (!contactPerson) errors.push('Missing Contact Person');
+          if (!phone) errors.push('Missing Phone Number');
+
+          parsedRows.push({
+            id: `roundtrip-${col}-${Date.now()}`,
+            name,
+            email,
+            contactPerson,
+            phone,
+            isValid: errors.length === 0,
+            errors,
+            selected: errors.length === 0,
+          });
+        }
+
+        const detectionsList: ColumnDetectionInfo[] = [
+          { columnIndex: 0, headerName: 'Exported Contact Block', field: 'name', confidence: 'high', reasoning: 'Matched Exported Matrix Contact Block' }
+        ];
+
+        return { parsedRows, detectionsList };
+      }
+    }
+
+    // Standard Tabular Parser with Heuristic Detection & Exclusion Guard
+    const headerRow = dataArray[0] || [];
+    const bodyRows = dataArray.slice(1);
+    const colCount = Math.max(...dataArray.map(r => r.length));
+
+    const normalizedChecklistLabels = checklistLabels.map(l => l.toLowerCase().replace(/[^a-z0-9]+/g, ''));
+
+    const detectionsList: ColumnDetectionInfo[] = [];
+
+    for (let c = 0; c < colCount; c++) {
+      const headerText = String(headerRow[c] || '').trim();
+      const colValues = bodyRows.map(r => String(r[c] || '').trim()).filter(Boolean);
+
+      // Check Checklist Exclusion Guard
+      const checklistMatchCount = colValues.filter(val => {
+        const normalizedVal = val.toLowerCase().replace(/[^a-z0-9]+/g, '');
+        return normalizedChecklistLabels.some(label => label.includes(normalizedVal) || normalizedVal.includes(label));
+      }).length;
+
+      if (colValues.length > 0 && (checklistMatchCount / colValues.length) > 0.4) {
+        detectionsList.push({
+          columnIndex: c,
+          headerName: headerText || `Column ${c + 1}`,
+          field: 'excluded',
+          confidence: 'high',
+          reasoning: 'Excluded: Values match checklist criteria text',
+        });
+        continue;
+      }
+
+      // Check Email Pattern
+      const emailMatches = colValues.filter(val => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)).length;
+      if (colValues.length > 0 && (emailMatches / colValues.length) > 0.5) {
+        detectionsList.push({
+          columnIndex: c,
+          headerName: headerText || `Column ${c + 1}`,
+          field: 'email',
+          confidence: 'high',
+          reasoning: 'Matched email pattern (local regex)',
+        });
+        continue;
+      }
+
+      // Check Phone Pattern
+      const phoneMatches = colValues.filter(val => {
+        const digitsOnly = val.replace(/\D/g, '');
+        return digitsOnly.length >= 7 && digitsOnly.length <= 15;
+      }).length;
+
+      const headerLower = headerText.toLowerCase();
+      if (headerLower.includes('phone') || headerLower.includes('mobile') || headerLower.includes('tel') || (colValues.length > 0 && (phoneMatches / colValues.length) > 0.6)) {
+        detectionsList.push({
+          columnIndex: c,
+          headerName: headerText || `Column ${c + 1}`,
+          field: 'phone',
+          confidence: headerLower.includes('phone') ? 'high' : 'medium',
+          reasoning: headerLower.includes('phone') ? 'Matched header "phone"' : 'Matched digit sequence pattern',
+        });
+        continue;
+      }
+
+      // Header Synonym Match for Name / Contact
+      if (headerLower.includes('name') || headerLower.includes('bidder') || headerLower.includes('company') || headerLower.includes('vendor')) {
+        detectionsList.push({
+          columnIndex: c,
+          headerName: headerText || `Column ${c + 1}`,
+          field: 'name',
+          confidence: 'high',
+          reasoning: 'Matched header synonym for Bidder Name',
+        });
+        continue;
+      }
+
+      if (headerLower.includes('contact') || headerLower.includes('person') || headerLower.includes('representative')) {
+        detectionsList.push({
+          columnIndex: c,
+          headerName: headerText || `Column ${c + 1}`,
+          field: 'contactPerson',
+          confidence: 'high',
+          reasoning: 'Matched header synonym for Contact Person',
+        });
+        continue;
+      }
+
+      // Unclassified text column -> Positional fallback
+      detectionsList.push({
+        columnIndex: c,
+        headerName: headerText || `Column ${c + 1}`,
+        field: 'excluded',
+        confidence: 'low',
+        reasoning: 'Unclassified text column',
+      });
+    }
+
+    // Resolve unassigned positional fields if any
+    const assignedFields = new Set(detectionsList.map(d => d.field));
+    if (!assignedFields.has('name')) {
+      const firstUnassigned = detectionsList.find(d => d.field === 'excluded' && !d.reasoning.includes('Checklist'));
+      if (firstUnassigned) {
+        firstUnassigned.field = 'name';
+        firstUnassigned.confidence = 'low';
+        firstUnassigned.reasoning = 'Positional guess for Bidder Name';
+      }
+    }
+
+    if (!assignedFields.has('contactPerson')) {
+      const secondUnassigned = detectionsList.find(d => d.field === 'excluded' && !d.reasoning.includes('Checklist'));
+      if (secondUnassigned) {
+        secondUnassigned.field = 'contactPerson';
+        secondUnassigned.confidence = 'low';
+        secondUnassigned.reasoning = 'Positional guess for Contact Person';
+      }
+    }
+
+    // Build Rows
+    const nameCol = detectionsList.find(d => d.field === 'name')?.columnIndex;
+    const emailCol = detectionsList.find(d => d.field === 'email')?.columnIndex;
+    const contactCol = detectionsList.find(d => d.field === 'contactPerson')?.columnIndex;
+    const phoneCol = detectionsList.find(d => d.field === 'phone')?.columnIndex;
+
+    const parsedRows: ParsedBidderRow[] = bodyRows.map((row, index) => {
+      const name = nameCol !== undefined ? String(row[nameCol] || '').trim() : '';
+      const email = emailCol !== undefined ? String(row[emailCol] || '').trim() : '';
+      const contactPerson = contactCol !== undefined ? String(row[contactCol] || '').trim() : '';
+      const phone = phoneCol !== undefined ? String(row[phoneCol] || '').trim() : '';
+
+      const errors: string[] = [];
+      if (!name) errors.push('Missing Bidder Name');
+      if (!email) errors.push('Missing Email');
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Invalid Email Format');
+      if (!contactPerson) errors.push('Missing Contact Person');
+      if (!phone) errors.push('Missing Phone Number');
+
+      return {
+        id: `row-${index}-${Date.now()}`,
+        name,
+        email,
+        contactPerson,
+        phone,
+        isValid: errors.length === 0,
+        errors,
+        selected: errors.length === 0,
+      };
+    }).filter(r => r.name || r.email);
+
+    return { parsedRows, detectionsList };
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -44,43 +267,17 @@ export default function BidderImportModal({ isOpen, onClose, tenderId, onSuccess
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
-        const json: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+        const rawArray: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
 
-        if (json.length === 0) {
+        if (rawArray.length === 0) {
           toast('The uploaded file is empty.', 'error');
           return;
         }
 
-        const parsedRows: ParsedBidderRow[] = json.map((row, index) => {
-          // Normalize column headers
-          const name = String(row.name || row.Name || row['Bidder Name'] || row['Company Name'] || '').trim();
-          const email = String(row.email || row.Email || row['Email Address'] || '').trim();
-          const contactPerson = String(row.contactPerson || row['Contact Person'] || row['Contact Name'] || row.contact || '').trim();
-          const phone = String(row.phone || row.Phone || row['Phone Number'] || row.contactNo || row.mobile || '').trim();
-
-          const errors: string[] = [];
-          if (!name) errors.push('Missing Bidder Name');
-          if (!email) {
-            errors.push('Missing Email');
-          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            errors.push('Invalid Email Format');
-          }
-          if (!contactPerson) errors.push('Missing Contact Person');
-          if (!phone) errors.push('Missing Phone Number');
-
-          return {
-            id: `row-${index}-${Date.now()}`,
-            name,
-            email,
-            contactPerson,
-            phone,
-            isValid: errors.length === 0,
-            errors,
-            selected: errors.length === 0,
-          };
-        });
-
+        const { parsedRows, detectionsList } = detectColumnsAndParse(rawArray);
         setRows(parsedRows);
+        setDetections(detectionsList);
+        toast(`Parsed ${parsedRows.length} bidders with smart column detection`, 'success');
       } catch (err: any) {
         toast('Failed to parse file. Please ensure it is a valid CSV or Excel file.', 'error');
       }
@@ -95,11 +292,8 @@ export default function BidderImportModal({ isOpen, onClose, tenderId, onSuccess
       
       const errors: string[] = [];
       if (!updated.name.trim()) errors.push('Missing Bidder Name');
-      if (!updated.email.trim()) {
-        errors.push('Missing Email');
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(updated.email.trim())) {
-        errors.push('Invalid Email Format');
-      }
+      if (!updated.email.trim()) errors.push('Missing Email');
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(updated.email.trim())) errors.push('Invalid Email Format');
       if (!updated.contactPerson.trim()) errors.push('Missing Contact Person');
       if (!updated.phone.trim()) errors.push('Missing Phone Number');
 
@@ -149,6 +343,7 @@ export default function BidderImportModal({ isOpen, onClose, tenderId, onSuccess
       onSuccess();
       onClose();
       setRows([]);
+      setDetections([]);
       setFileName('');
     } catch (err: any) {
       toast(err.message || 'Failed to import bidders', 'error');
@@ -157,20 +352,19 @@ export default function BidderImportModal({ isOpen, onClose, tenderId, onSuccess
     }
   };
 
-  const validCount = rows.filter(r => r.isValid).length;
   const selectedCount = rows.filter(r => r.selected && r.isValid).length;
 
   return (
-    <Dialog isOpen={isOpen} onClose={onClose} title="Import Bidders from CSV/Excel" size="xl">
+    <Dialog isOpen={isOpen} onClose={onClose} title="Smart Import Bidders (CSV / Excel)" size="xl">
       <div className="space-y-5">
-        {/* Upload Zone if no rows parsed yet */}
+        {/* Upload Zone */}
         {rows.length === 0 ? (
           <div className="space-y-4">
             <div className="p-8 border-2 border-dashed border-[var(--border-subtle)] hover:border-[var(--brand-primary)] rounded-[var(--radius-lg)] bg-[var(--bg-subtle)]/50 text-center transition-colors">
               <FileSpreadsheet size={36} className="mx-auto mb-3 text-[var(--brand-primary)]" />
               <h4 className="font-bold text-sm text-[var(--text-primary)]">Upload CSV or Excel Spreadsheet</h4>
               <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md mx-auto">
-                Expected columns: <strong>name</strong>, <strong>email</strong>, <strong>contactPerson</strong>, <strong>phone</strong>.
+                Features local heuristic auto-detection (email, phone, name) and checklist criteria exclusion guard.
               </p>
               <label className="mt-4 inline-flex items-center gap-2 min-h-11 px-5 py-2 rounded-[var(--radius-sm)] bg-[var(--brand-primary)] text-white text-xs font-bold cursor-pointer hover:bg-[var(--brand-primary-hover)] transition-colors shadow-xs">
                 <Upload size={16} /> Choose File (.csv, .xlsx)
@@ -180,39 +374,62 @@ export default function BidderImportModal({ isOpen, onClose, tenderId, onSuccess
 
             <Card className="p-4 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] space-y-1.5">
               <div className="flex items-center gap-1.5 font-bold text-[var(--text-primary)]">
-                <Info size={14} className="text-[var(--brand-primary)]" /> Sample Header Template
+                <Info size={14} className="text-[var(--brand-primary)]" /> Smart Local Heuristics & Exclusions
               </div>
-              <p className="font-mono text-[11px] text-[var(--text-muted)] bg-[var(--bg-surface)] p-2 rounded border border-[var(--border-subtle)]">
-                name, email, contactPerson, phone
+              <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                Automatically detects column fields using regex patterns and header text. If a column contains checklist criteria labels, it is safely excluded from bidder fields.
               </p>
             </Card>
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Summary Bar */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3.5 rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] border border-[var(--border-subtle)] text-xs">
-              <div className="flex items-center gap-2">
-                <Badge tone={selectedCount > 0 ? 'success' : 'neutral'}>
-                  {selectedCount} / {rows.length} Ready to Import
-                </Badge>
-                {fileName && <span className="text-[var(--text-muted)] font-mono">({fileName})</span>}
+            {/* Auto-Detection Summary Bar */}
+            <div className="p-3.5 rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] border border-[var(--border-subtle)] text-xs space-y-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge tone={selectedCount > 0 ? 'success' : 'neutral'}>
+                    {selectedCount} / {rows.length} Ready to Import
+                  </Badge>
+                  {fileName && <span className="text-[var(--text-muted)] font-mono">({fileName})</span>}
+                </div>
+                <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-[var(--brand-primary)] hover:underline">
+                  <Upload size={14} /> Change File
+                  <input type="file" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} className="hidden" />
+                </label>
               </div>
-              <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-[var(--brand-primary)] hover:underline">
-                <Upload size={14} /> Upload Different File
-                <input type="file" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} className="hidden" />
-              </label>
+
+              {detections.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-1 border-t border-[var(--border-subtle)] text-[11px]">
+                  {detections.map((d, i) => (
+                    <span
+                      key={i}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                        d.field === 'excluded'
+                          ? 'bg-[var(--status-neutral-bg)] text-[var(--text-muted)] border-[var(--border-subtle)]'
+                          : d.confidence === 'high'
+                          ? 'bg-[var(--status-success-bg)] text-[var(--status-success-text)] border-[var(--status-success)]/30'
+                          : 'bg-[var(--status-warning-bg)] text-[var(--status-warning-text)] border-[var(--status-warning)]/30'
+                      }`}
+                      title={d.reasoning}
+                    >
+                      {d.field === 'excluded' ? <ShieldAlert size={11} /> : <CheckCircle2 size={11} />}
+                      <strong>{d.headerName}</strong>: {d.field} ({d.reasoning})
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Preview Table */}
             <div className="max-h-[50vh] overflow-y-auto border border-[var(--border-subtle)] rounded-[var(--radius-sm)]">
               <table className="w-full text-left border-collapse text-xs">
-                <thead className="sticky top-0 bg-[var(--bg-subtle)] border-b border-[var(--border-subtle)] font-bold text-[var(--text-secondary)]">
+                <thead className="sticky top-0 bg-[var(--bg-subtle)] border-b border-[var(--border-subtle)] font-bold text-[var(--text-secondary)] z-10">
                   <tr>
                     <th className="p-2.5 w-10 text-center">Include</th>
                     <th className="p-2.5">Bidder Name</th>
-                    <th className="p-2.5">Email</th>
+                    <th className="p-2.5">Email Address</th>
                     <th className="p-2.5">Contact Person</th>
-                    <th className="p-2.5">Phone</th>
+                    <th className="p-2.5">Phone Number</th>
                     <th className="p-2.5 w-24">Status</th>
                     <th className="p-2.5 w-10"></th>
                   </tr>
