@@ -299,9 +299,9 @@ export default function BulkEmails({ tender, bidders, checklistItems, currentUse
         </Card>
 
         {/* Right Panel: Active Draft Workspace */}
-        <Card className="md:col-span-2 p-5 flex flex-col h-full overflow-hidden">
+        <Card className="md:col-span-2 p-4 sm:p-5 flex flex-col min-h-0 md:h-full md:overflow-hidden">
           {activeBidder && activeDraft ? (
-            <div className="flex-1 flex flex-col space-y-4 h-full min-h-0">
+            <div className="flex flex-col space-y-4 md:flex-1 md:min-h-0 md:h-full">
               
               {/* Flagged Item Summary Header Line */}
               <div className="p-3 rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] border border-[var(--border-subtle)] flex items-center justify-between gap-3 text-xs shrink-0">
@@ -332,40 +332,39 @@ export default function BulkEmails({ tender, bidders, checklistItems, currentUse
               )}
 
               {/* Subject Input */}
-              <Input
-                label="Email Subject"
-                value={editedSubject}
-                onChange={(e) => setEditedSubject(e.target.value)}
-              />
-
-              {/* Body Textarea */}
-              <div className="flex-1 flex flex-col min-h-0 space-y-1">
-                <label className="block text-xs font-bold text-[var(--text-secondary)]">Email Body</label>
-                <textarea
-                  value={editedBody}
-                  onChange={(e) => setEditedBody(e.target.value)}
-                  className="w-full min-h-[180px] sm:min-h-[240px] flex-1 text-xs p-3.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-[var(--text-primary)] font-mono outline-none transition-colors focus:border-[var(--brand-primary)] leading-relaxed overflow-y-auto resize-y"
+              <div className="shrink-0">
+                <Input
+                  label="Email Subject"
+                  value={editedSubject}
+                  onChange={(e) => setEditedSubject(e.target.value)}
                 />
               </div>
 
-              {/* Footer Action Bar */}
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-[var(--border-subtle)] pt-3 shrink-0">
-                <span className="text-[10px] text-[var(--text-muted)]">
+              {/* Body Textarea & Disclaimer Note */}
+              <div className="flex flex-col space-y-1.5 md:flex-1 md:min-h-0">
+                <label className="block text-xs font-bold text-[var(--text-secondary)] shrink-0">Email Body</label>
+                <textarea
+                  value={editedBody}
+                  onChange={(e) => setEditedBody(e.target.value)}
+                  className="w-full min-h-[220px] md:flex-1 text-xs p-3.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-[var(--text-primary)] font-mono outline-none transition-colors focus:border-[var(--brand-primary)] leading-relaxed overflow-y-auto"
+                />
+                <p className="text-[11px] text-[var(--text-muted)] pt-1 shrink-0">
                   * Draft changes are populated into standard RFC 822 mailto links or copied directly.
-                </span>
+                </p>
+              </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button variant="secondary" size="sm" onClick={handleManualMarkAsSent}>
-                    <Send size={14} /> Mark as Sent
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={handleCopy}>
-                    {isCopied ? <Check size={14} className="text-[var(--status-success)]" /> : <Copy size={14} />}
-                    {isCopied ? 'Copied' : 'Copy Text'}
-                  </Button>
-                  <Button size="sm" onClick={handleMailto}>
-                    <Mail size={14} /> Open in Mail Client
-                  </Button>
-                </div>
+              {/* Footer Action Bar */}
+              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--border-subtle)] pt-3 shrink-0">
+                <Button variant="secondary" size="sm" onClick={handleManualMarkAsSent}>
+                  <Send size={14} /> Mark as Sent
+                </Button>
+                <Button variant="secondary" size="sm" onClick={handleCopy}>
+                  {isCopied ? <Check size={14} className="text-[var(--status-success)]" /> : <Copy size={14} />}
+                  {isCopied ? 'Copied' : 'Copy Text'}
+                </Button>
+                <Button size="sm" onClick={handleMailto}>
+                  <Mail size={14} /> Open in Mail Client
+                </Button>
               </div>
 
             </div>
