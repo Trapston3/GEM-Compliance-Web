@@ -191,6 +191,8 @@ async function seed() {
       name: "Tender-01",
       subjectLine: "Compliance verification against GeM Bid for Materials Procurement",
       createdBy: superuser.id,
+      ownerId: superuser.id,
+      status: 'active',
     }).returning();
 
     // 3. Seed Checklist Items
@@ -198,6 +200,23 @@ async function seed() {
     for (const item of checklistItemsToSeed) {
       await db.insert(schema.checklistItems).values({
         tenderId: tender.id,
+        label: item.label,
+        category: item.category,
+        groupOrder: item.groupOrder,
+        sortOrder: item.sortOrder,
+      });
+    }
+
+    // 4. Seed Checklist Templates
+    console.log('Seeding checklist templates...');
+    const [template] = await db.insert(schema.checklistTemplates).values({
+      name: "Standard MRPL Checklist",
+      description: "Standard compliance verification checklist for materials procurement",
+    }).returning();
+
+    for (const item of checklistItemsToSeed) {
+      await db.insert(schema.checklistTemplateItems).values({
+        templateId: template.id,
         label: item.label,
         category: item.category,
         groupOrder: item.groupOrder,

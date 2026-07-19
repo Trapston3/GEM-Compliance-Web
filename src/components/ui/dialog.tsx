@@ -8,7 +8,7 @@ interface DialogProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
 export function Dialog({ isOpen, onClose, title, children, size = 'md' }: DialogProps) {
@@ -59,10 +59,11 @@ export function Dialog({ isOpen, onClose, title, children, size = 'md' }: Dialog
     sm: 'max-w-md',
     md: 'max-w-lg',
     lg: 'max-w-3xl',
+    xl: 'max-w-5xl',
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-sm transition-all duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgb(15_27_45_/_0.62)] p-4 backdrop-blur-xs transition-opacity duration-200">
       {/* Backdrop */}
       <div 
         className="fixed inset-0 cursor-default" 
@@ -73,17 +74,17 @@ export function Dialog({ isOpen, onClose, title, children, size = 'md' }: Dialog
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        className={`relative w-full ${sizeClasses[size]} bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform transition-all duration-200 ease-out z-10`}
+        className={`relative w-full ${sizeClasses[size]} rounded-[var(--radius-lg)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] shadow-2xl flex max-h-[90vh] flex-col overflow-hidden transform transition-all duration-200 ease-out z-10`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-zinc-800">
-          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-5 py-4">
+          <h3 className="text-base font-bold text-[var(--text-primary)]">
             {title}
           </h3>
           <button
             onClick={onClose}
             aria-label="Close dialog"
-            className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-subtle)] cursor-pointer"
           >
             <X size={18} />
           </button>

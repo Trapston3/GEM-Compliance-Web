@@ -6,6 +6,7 @@ import { auth } from '@/auth';
 import { logActivity } from '@/lib/auditLog';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { assertTenderAccess } from '@/lib/tenderAccess';
 
 const AddChecklistItemSchema = z.object({
   tenderId: z.number(),
@@ -24,6 +25,7 @@ export async function getChecklistItems(tenderId: number) {
   if (!session) {
     throw new Error('Unauthorized');
   }
+  await assertTenderAccess(tenderId, session);
 
   return await db
     .select()
@@ -39,6 +41,7 @@ export async function addChecklistItem(data: { tenderId: number; label: string; 
   }
 
   const validated = AddChecklistItemSchema.parse(data);
+  await assertTenderAccess(validated.tenderId, session);
 
   // Group order: Submission -> 1, Acceptance -> 3. (EMD is 2, but new user-added items default to group 1 for submission and 3 for acceptance).
   const groupOrder = validated.category === 'submission' ? 1 : 3;
@@ -103,6 +106,7 @@ export async function updateChecklistItem(data: { id: number; label: string; cat
   if (!oldItem) {
     throw new Error('Checklist item not found');
   }
+  await assertTenderAccess(oldItem.tenderId, session);
 
   const userId = parseInt((session.user as any).id, 10);
   const isCategoryChanged = oldItem.category !== validated.category;
@@ -168,6 +172,7 @@ export async function deleteChecklistItem(id: number) {
   if (!item) {
     throw new Error('Checklist item not found');
   }
+  await assertTenderAccess(item.tenderId, session);
 
   // Delete checklist item (cascades to statuses)
   await db.delete(checklistItems).where(eq(checklistItems.id, id));

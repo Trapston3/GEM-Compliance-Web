@@ -6,6 +6,7 @@ export const roleEnum = pgEnum('role', ['user', 'superuser', 'guest']);
 
 // Define Checklist Category Enum
 export const categoryEnum = pgEnum('category', ['submission', 'acceptance', 'text_note']);
+export const tenderStatusEnum = pgEnum('tender_status', ['active', 'archived']);
 
 // Users Table
 export const users = pgTable('users', {
@@ -32,6 +33,8 @@ export const tenders = pgTable('tenders', {
   name: text('name').notNull(),
   subjectLine: text('subject_line'),
   createdBy: integer('created_by').references(() => users.id),
+  ownerId: integer('owner_id').references(() => users.id).notNull(),
+  status: tenderStatusEnum('status').notNull().default('active'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -55,6 +58,8 @@ export const bidders = pgTable('bidders', {
   email: text('email').notNull(),
   contactPerson: text('contact_person').notNull(),
   phone: text('phone').notNull(),
+  lastDraftedSentAt: timestamp('last_drafted_sent_at'),
+  lastDraftedSentBy: integer('last_drafted_sent_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
@@ -102,6 +107,10 @@ export const tendersRelations = relations(tenders, ({ one, many }) => ({
     fields: [tenders.createdBy],
     references: [users.id],
   }),
+  owner: one(users, {
+    fields: [tenders.ownerId],
+    references: [users.id],
+  }),
   checklistItems: many(checklistItems),
   bidders: many(bidders),
   activityLogs: many(activityLog),
@@ -121,6 +130,10 @@ export const biddersRelations = relations(bidders, ({ one, many }) => ({
     references: [tenders.id],
   }),
   statuses: many(bidderStatuses),
+  lastDraftedSentUser: one(users, {
+    fields: [bidders.lastDraftedSentBy],
+    references: [users.id],
+  }),
 }));
 
 export const bidderStatusesRelations = relations(bidderStatuses, ({ one }) => ({
@@ -148,3 +161,36 @@ export const activityLogRelations = relations(activityLog, ({ one }) => ({
     references: [tenders.id],
   }),
 }));
+
+// Checklist Templates Table
+export const checklistTemplates = pgTable('checklist_templates', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  isDefault: boolean('is_default').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// Checklist Template Items Table
+export const checklistTemplateItems = pgTable('checklist_template_items', {
+  id: serial('id').primaryKey(),
+  templateId: integer('template_id').references(() => checklistTemplates.id, { onDelete: 'cascade' }).notNull(),
+  label: text('label').notNull(),
+  category: text('category').notNull().default('submission'),
+  groupOrder: integer('group_order').notNull(),
+  sortOrder: integer('sort_order').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const checklistTemplatesRelations = relations(checklistTemplates, ({ many }) => ({
+  items: many(checklistTemplateItems),
+}));
+
+export const checklistTemplateItemsRelations = relations(checklistTemplateItems, ({ one }) => ({
+  template: one(checklistTemplates, {
+    fields: [checklistTemplateItems.templateId],
+    references: [checklistTemplates.id],
+  }),
+}));
+

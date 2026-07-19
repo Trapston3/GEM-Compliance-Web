@@ -2,8 +2,11 @@ import React from 'react';
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { requireSuperuser, getUsers, getActivityLogs } from '@/app/actions/user';
+import { getChecklistTemplates } from '@/app/actions/template';
 import Header from '@/components/Header';
 import AdminDashboard from './AdminDashboard';
+import { db, tenders, bidders, users } from '@/db';
+import { eq } from 'drizzle-orm';
 
 export default async function AdminPage() {
   // Re-verify role server-side
@@ -14,11 +17,14 @@ export default async function AdminPage() {
     redirect('/');
   }
 
-  // Fetch users and activity logs in parallel
-  const [usersList, logsList] = await Promise.all([
+  // Fetch users, activity logs, and templates in parallel
+  const [usersList, logsList, tenderRows, templatesList] = await Promise.all([
     getUsers(),
-    getActivityLogs()
+    getActivityLogs(),
+    db.select({ tender: tenders, ownerName: users.nameEn }).from(tenders).leftJoin(users, eq(tenders.ownerId, users.id)),
+    getChecklistTemplates(),
   ]);
+  const tenderCounts = await Promise.all(tenderRows.map(async ({ tender, ownerName }) => ({ ...tender, ownerName: ownerName || 'Unknown', bidderCount: (await db.select({ id: bidders.id }).from(bidders).where(eq(bidders.tenderId, tender.id))).length })));
 
   const currentUser = {
     id: (session.user as any).id,
@@ -49,6 +55,8 @@ export default async function AdminPage() {
       <AdminDashboard 
         initialUsers={serializedUsers} 
         initialLogs={serializedLogs} 
+        initialTenders={tenderCounts}
+        initialTemplates={templatesList}
         currentUser={currentUser} 
       />
     </div>

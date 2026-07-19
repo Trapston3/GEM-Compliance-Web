@@ -19,6 +19,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const savedTheme = localStorage.getItem('theme') as Theme | null;
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     const activeTheme = savedTheme || systemTheme;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTheme(activeTheme);
     if (activeTheme === 'dark') {
       document.documentElement.classList.add('dark');

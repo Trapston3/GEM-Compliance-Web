@@ -13,16 +13,21 @@ import {
   Printer, 
   Copy, 
   Check, 
-  MailWarning,
+  AlertTriangle,
   Loader2,
   FileText,
-  Search
+  Search,
+  Upload,
+  Send,
+  Info
 } from 'lucide-react';
 import { Dialog } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
-import { addBidder, updateBidder, deleteBidder, updateBidderStatus } from '@/app/actions/bidder';
-import { buildEmailBody } from '@/lib/emailBuilder';
+import { addBidder, updateBidder, deleteBidder, updateBidderStatus, markBidderAsDraftedSent } from '@/app/actions/bidder';
+import { buildEmailBody, getBidderFlaggedSummary } from '@/lib/emailBuilder';
 import { useRouter } from 'next/navigation';
+import { Button, Badge, Card, EmptyState, Input, Textarea } from '@/components/ui/primitives';
+import BidderImportModal from '@/components/bidders/BidderImportModal';
 import * as XLSX from 'xlsx';
 
 interface Status {
@@ -43,6 +48,9 @@ interface Bidder {
   phone: string;
   createdAt: Date;
   statuses: Status[];
+  lastDraftedSentAt?: string | Date | null;
+  lastDraftedSentBy?: number | null;
+  lastDraftedSentByName?: string | null;
 }
 
 interface ChecklistItem {
@@ -66,6 +74,7 @@ function DeviationTextInput({ bidderId, itemId, initialValue, onSave }: Deviatio
   const [val, setVal] = useState(initialValue);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVal(initialValue);
   }, [initialValue]);
 
@@ -89,13 +98,14 @@ function DeviationTextInput({ bidderId, itemId, initialValue, onSave }: Deviatio
       onChange={(e) => setVal(e.target.value)}
       onBlur={handleSave}
       onKeyDown={handleKeyDown}
-      className="w-full text-xs p-1.5 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-zinc-100 border border-slate-200 dark:border-zinc-700 rounded focus:outline-none focus:border-indigo-500 font-medium placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+      className="w-full text-xs p-1.5 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] outline-none focus:border-[var(--brand-primary)] font-medium placeholder:text-[var(--text-muted)]"
       placeholder="Type custom deviations..."
     />
   );
 }
 
 interface DashboardProps {
+  view: 'overview' | 'bidders' | 'matrix';
   tender: {
     id: number;
     name: string;
@@ -113,23 +123,23 @@ interface DashboardProps {
   };
 }
 
-export default function Dashboard({ tender, bidders: initialBidders, checklistItems, currentUser }: DashboardProps) {
+export default function Dashboard({ view, tender, bidders: initialBidders, checklistItems, currentUser }: DashboardProps) {
   const router = useRouter();
   const { toast } = useToast();
 
   const [bidders, setBidders] = useState<Bidder[]>(initialBidders);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBidders(initialBidders);
   }, [initialBidders]);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'bidders' | 'matrix'>('overview');
-  
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modals state
   const [isAddingBidder, setIsAddingBidder] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [editingBidder, setEditingBidder] = useState<Bidder | null>(null);
   const [deletingBidder, setDeletingBidder] = useState<Bidder | null>(null);
   const [emailBidder, setEmailBidder] = useState<Bidder | null>(null);
@@ -144,23 +154,23 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
   // Email Draft Form State
   const [draftSubject, setDraftSubject] = useState('');
   const [draftBody, setDraftBody] = useState('');
+  const [draftSummary, setDraftSummary] = useState('');
   const [isCopied, setIsCopied] = useState(false);
+  const [confirmResend, setConfirmResend] = useState(false);
 
-  // Status map of active bidder statuses
-  const bidderMap = useMemo(() => {
-    const map: Record<number, Bidder> = {};
-    bidders.forEach(b => {
-      map[b.id] = b;
-    });
-    return map;
-  }, [bidders]);
+  const isRecentlyDraftedSent = useMemo(() => {
+    if (!emailBidder?.lastDraftedSentAt) return false;
+    const lastSent = new Date(emailBidder.lastDraftedSentAt);
+    // eslint-disable-next-line react-hooks/purity
+    const diffMs = Date.now() - lastSent.getTime();
+    return diffMs < 24 * 60 * 60 * 1000;
+  }, [emailBidder]);
 
-  // Computed Compliance Stats
+  // Compliance Stats
   const stats = useMemo(() => {
-    let totalBidders = bidders.length;
+    const totalBidders = bidders.length;
     let fullyCompliant = 0;
     let pendingBidders = 0;
-    
     let totalCells = 0;
     let compliantCells = 0;
     let pendingCells = 0;
@@ -168,68 +178,45 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
 
     bidders.forEach(bidder => {
       let isBidderPending = false;
-      
       checklistItems.forEach(item => {
         const statusObj = bidder.statuses.find(s => s.checklistItemId === item.id);
         const status = statusObj?.status;
         totalCells++;
 
         if (item.category === 'submission') {
-          if (status === 'submitted') {
-            compliantCells++;
-          } else if (status === 'not_applicable') {
-            naCells++;
-          } else {
-            pendingCells++;
-            isBidderPending = true;
-          }
-        } else {
-          if (status === 'accepted') {
-            compliantCells++;
-          } else if (status === 'not_applicable') {
-            naCells++;
-          } else {
-            pendingCells++;
-            isBidderPending = true;
-          }
+          if (status === 'submitted') compliantCells++;
+          else if (status === 'not_applicable') naCells++;
+          else { pendingCells++; isBidderPending = true; }
+        } else if (item.category === 'acceptance') {
+          if (status === 'accepted') compliantCells++;
+          else if (status === 'not_applicable') naCells++;
+          else { pendingCells++; isBidderPending = true; }
+        } else if (item.category === 'text_note') {
+          if (!status || status === 'accepted' || status === 'not_applicable') compliantCells++;
+          else { pendingCells++; isBidderPending = true; }
         }
       });
 
-      if (isBidderPending) {
-        pendingBidders++;
-      } else {
-        fullyCompliant++;
-      }
+      if (isBidderPending) pendingBidders++;
+      else fullyCompliant++;
     });
 
     const cellPercentage = totalCells > 0 ? Math.round((compliantCells / totalCells) * 100) : 0;
-
-    return {
-      totalBidders,
-      fullyCompliant,
-      pendingBidders,
-      totalCells,
-      compliantCells,
-      pendingCells,
-      naCells,
-      cellPercentage
-    };
+    return { totalBidders, fullyCompliant, pendingBidders, totalCells, compliantCells, pendingCells, naCells, cellPercentage };
   }, [bidders, checklistItems]);
 
-  // Filtered Bidders List
   const filteredBidders = useMemo(() => {
     return bidders.filter(b => {
-      const query = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase();
       return (
-        b.name.toLowerCase().includes(query) ||
-        b.email.toLowerCase().includes(query) ||
-        b.contactPerson.toLowerCase().includes(query) ||
-        b.phone.toLowerCase().includes(query)
+        b.name.toLowerCase().includes(q) ||
+        b.email.toLowerCase().includes(q) ||
+        b.contactPerson.toLowerCase().includes(q) ||
+        b.phone.toLowerCase().includes(q)
       );
     });
   }, [bidders, searchQuery]);
 
-  // Open Add Bidder Modal
   const openAddModal = () => {
     setIsAddingBidder(true);
     setBidderName('');
@@ -238,7 +225,6 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
     setBidderPhone('');
   };
 
-  // Add Bidder Submit
   const handleAddBidder = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -251,7 +237,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
         phone: bidderPhone,
       });
       if (res.success) {
-        toast('Bidder added and default compliance seeded', 'success');
+        toast('Bidder added successfully', 'success');
         setIsAddingBidder(false);
         router.refresh();
       }
@@ -262,7 +248,6 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
     }
   };
 
-  // Open Edit Bidder Modal
   const openEditModal = (bidder: Bidder) => {
     setEditingBidder(bidder);
     setBidderName(bidder.name);
@@ -271,7 +256,6 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
     setBidderPhone(bidder.phone);
   };
 
-  // Edit Bidder Submit
   const handleEditBidder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingBidder) return;
@@ -285,7 +269,7 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
         phone: bidderPhone,
       });
       if (res.success) {
-        toast('Bidder details updated successfully', 'success');
+        toast('Bidder details updated', 'success');
         setEditingBidder(null);
         router.refresh();
       }
@@ -296,14 +280,13 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
     }
   };
 
-  // Delete Bidder Submit
   const handleDeleteBidder = async () => {
     if (!deletingBidder) return;
     setIsSaving(true);
     try {
       const res = await deleteBidder(deletingBidder.id);
       if (res.success) {
-        toast('Bidder and associated statuses deleted', 'success');
+        toast('Bidder deleted', 'success');
         setDeletingBidder(null);
         router.refresh();
       }
@@ -314,20 +297,11 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
     }
   };
 
-  // Open Email Modal
   const openEmailModal = (bidder: Bidder) => {
-    // Build status map
     const statusMap: Record<number, string> = {};
-    bidder.statuses.forEach(s => {
-      statusMap[s.checklistItemId] = s.status;
-    });
+    bidder.statuses.forEach(s => { statusMap[s.checklistItemId] = s.status; });
 
-    const userObj = {
-      nameHi: currentUser.nameHi,
-      nameEn: currentUser.nameEn,
-      phone: currentUser.phone,
-    };
-
+    const userObj = { nameHi: currentUser.nameHi, nameEn: currentUser.nameEn, phone: currentUser.phone };
     const draft = buildEmailBody(
       { name: bidder.name, email: bidder.email, contactPerson: bidder.contactPerson, phone: bidder.phone },
       tender,
@@ -336,70 +310,117 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
       statusMap
     );
 
+    const summary = getBidderFlaggedSummary(checklistItems, statusMap);
+
     setEmailBidder(bidder);
     setDraftSubject(draft.subject);
     setDraftBody(draft.body);
+    setDraftSummary(summary);
     setIsCopied(false);
+    setConfirmResend(false);
   };
 
-  // Copy Email Body to Clipboard
-  const handleCopyEmail = () => {
-    navigator.clipboard.writeText(draftBody);
+  const handleCopyEmail = async () => {
+    if (isRecentlyDraftedSent && !confirmResend) {
+      toast('Please confirm re-send by checking the box below.', 'error');
+      return;
+    }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(draftBody).catch(console.warn);
+    }
     setIsCopied(true);
     toast('Email body copied to clipboard', 'success');
-    
-    // Log copy activity client-side by letting server know
-    // We can do this asynchronously
-    fetch('/api/logs', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'email.copied', bidderName: emailBidder?.name }),
-    }).catch(() => {});
-    
+
+    try {
+      await markBidderAsDraftedSent({ bidderId: emailBidder!.id, action: 'email.copied' });
+      router.refresh();
+    } catch (err: any) {
+      toast(err.message || 'Failed to update status', 'error');
+    }
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  // Launch Mailto Link
-  const handleMailto = () => {
+  const handleManualMarkAsSent = async () => {
     if (!emailBidder) return;
-    
+    if (isRecentlyDraftedSent && !confirmResend) {
+      toast('Please confirm re-send by checking the box below.', 'error');
+      return;
+    }
+    try {
+      await markBidderAsDraftedSent({ bidderId: emailBidder.id, action: 'email.marked_as_sent' });
+      toast('Marked as drafted/sent successfully', 'success');
+      setEmailBidder(null);
+      router.refresh();
+    } catch (err: any) {
+      toast(err.message || 'Failed to update status', 'error');
+    }
+  };
+
+  const handleMailto = async () => {
+    if (!emailBidder) return;
+    if (isRecentlyDraftedSent && !confirmResend) {
+      toast('Please confirm re-send by checking the box below.', 'error');
+      return;
+    }
     const mailtoUrl = `mailto:${emailBidder.email}?subject=${encodeURIComponent(draftSubject)}&body=${encodeURIComponent(draftBody)}`;
     window.location.href = mailtoUrl;
 
-    // Log mailto click
-    fetch('/api/logs', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'email.draft_generated', bidderName: emailBidder?.name }),
-    }).catch(() => {});
+    try {
+      await markBidderAsDraftedSent({ bidderId: emailBidder.id, action: 'email.draft_generated' });
+      router.refresh();
+    } catch (err: any) {
+      toast(err.message || 'Failed to update status', 'error');
+    }
   };
 
-  // Excel Export
+  const handleCellStatusChange = async (bidderId: number, itemId: number, newStatus: string) => {
+    try {
+      setBidders(prev => prev.map(b => {
+        if (b.id !== bidderId) return b;
+        const existingStatus = b.statuses.find(s => s.checklistItemId === itemId);
+        let updatedStatuses = [...b.statuses];
+        if (existingStatus) {
+          updatedStatuses = updatedStatuses.map(s => s.checklistItemId === itemId ? { ...s, status: newStatus } : s);
+        } else {
+          updatedStatuses.push({
+            id: Date.now(),
+            bidderId,
+            checklistItemId: itemId,
+            status: newStatus,
+            updatedAt: new Date(),
+            updatedBy: Number(currentUser.id),
+          });
+        }
+        return { ...b, statuses: updatedStatuses };
+      }));
+
+      await updateBidderStatus({ bidderId, checklistItemId: itemId, status: newStatus });
+      toast('Status updated', 'success');
+    } catch (err: any) {
+      toast(err.message || 'Failed to update status', 'error');
+      router.refresh();
+    }
+  };
+
   const downloadExcel = () => {
     const wsData = [];
-    
-    // Header Row
-    const headers = ["Checklist Item / क्राइटेरिया", "Category", ...bidders.map(b => b.name)];
+    const headers = ["Checklist Item", "Category", ...bidders.map(b => b.name)];
     wsData.push(headers);
-    
-    // Data Rows
+
     checklistItems.forEach(item => {
-      const row = [
-        item.label,
-        item.category === 'submission' ? 'Submission / प्रलेख' : 'Acceptance / नियम'
-      ];
-      
+      const row = [item.label, item.category === 'submission' ? 'Submission' : 'Acceptance'];
       bidders.forEach(bidder => {
         const statusObj = bidder.statuses.find(s => s.checklistItemId === item.id);
         const status = statusObj?.status;
-
         let labelText = '';
         if (item.category === 'submission') {
-          if (status === 'submitted') labelText = 'Submitted / प्रस्तुत';
+          if (status === 'submitted') labelText = 'Submitted';
           else if (status === 'not_applicable') labelText = 'N/A';
-          else labelText = 'Pending / लंबित';
+          else labelText = 'Pending';
         } else {
-          if (status === 'accepted') labelText = 'Accepted / स्वीकृत';
+          if (status === 'accepted') labelText = 'Accepted';
           else if (status === 'not_applicable') labelText = 'N/A';
-          else labelText = 'Not Accepted / अस्वीकृत';
+          else labelText = 'Not Accepted';
         }
         row.push(labelText);
       });
@@ -409,762 +430,317 @@ export default function Dashboard({ tender, bidders: initialBidders, checklistIt
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Compliance Matrix");
-    XLSX.writeFile(wb, `${tender.name}_Compliance_Matrix.xlsx`);
-    toast('Excel sheet exported successfully', 'success');
-  };
-
-  // Status Cell Change Handler
-  const handleStatusChange = async (bidderId: number, checklistItemId: number, newStatus: string) => {
-    // 1. Capture old status for rollback
-    const bidder = bidders.find(b => b.id === bidderId);
-    if (!bidder) return;
-    const oldStatusObj = bidder.statuses.find(s => s.checklistItemId === checklistItemId);
-    const oldStatus = oldStatusObj?.status || '';
-
-    // 2. Perform optimistic update on the client state
-    setBidders(prevBidders => {
-      return prevBidders.map(b => {
-        if (b.id !== bidderId) return b;
-        
-        // Find if status object exists
-        const statusExists = b.statuses.some(s => s.checklistItemId === checklistItemId);
-        let updatedStatuses;
-        
-        if (statusExists) {
-          updatedStatuses = b.statuses.map(s => {
-            if (s.checklistItemId === checklistItemId) {
-              return { ...s, status: newStatus, updatedAt: new Date() };
-            }
-            return s;
-          });
-        } else {
-          updatedStatuses = [
-            ...b.statuses,
-            {
-              id: Date.now(), // dummy temporary id
-              bidderId,
-              checklistItemId,
-              status: newStatus,
-              updatedAt: new Date(),
-              updatedBy: parseInt(currentUser.id, 10),
-            }
-          ];
-        }
-        
-        return {
-          ...b,
-          statuses: updatedStatuses
-        };
-      });
-    });
-
-    // 3. Make background DB update
-    try {
-      const res = await updateBidderStatus({
-        bidderId,
-        checklistItemId,
-        status: newStatus,
-      });
-      if (res.success) {
-        toast('Compliance cell updated', 'success');
-        // Revalidate in background to keep data in sync, but do not block UI
-        router.refresh();
-      }
-    } catch (err: any) {
-      toast(err.message || 'Failed to update compliance cell', 'error');
-      
-      // Rollback to old status
-      setBidders(prevBidders => {
-        return prevBidders.map(b => {
-          if (b.id !== bidderId) return b;
-          return {
-            ...b,
-            statuses: b.statuses.map(s => {
-              if (s.checklistItemId === checklistItemId) {
-                return { ...s, status: oldStatus };
-              }
-              return s;
-            })
-          };
-        });
-      });
-    }
-  };
-
-  // Bidder stats helper
-  const getBidderStats = (bidder: Bidder) => {
-    let compliant = 0;
-    let pending = 0;
-    let na = 0;
-
-    checklistItems.forEach(item => {
-      const statusObj = bidder.statuses.find(s => s.checklistItemId === item.id);
-      const status = statusObj?.status;
-
-      if (item.category === 'submission') {
-        if (status === 'submitted') compliant++;
-        else if (status === 'not_applicable') na++;
-        else pending++;
-      } else {
-        if (status === 'accepted') compliant++;
-        else if (status === 'not_applicable') na++;
-        else pending++;
-      }
-    });
-
-    const total = checklistItems.length;
-    const progress = total > 0 ? Math.round((compliant / total) * 100) : 0;
-
-    return { compliant, pending, na, progress };
+    XLSX.writeFile(wb, `${tender.name.replace(/[^a-zA-Z0-9]/g, '_')}_Matrix.xlsx`);
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-zinc-950">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
       
-      {/* Subheader Toolbar */}
-      <div className="bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 p-3 sm:px-6 sm:py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between shrink-0">
-        
-        {/* Navigation Tabs */}
-        <div className="flex max-w-full overflow-x-auto bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`flex shrink-0 items-center gap-2 px-3 sm:px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
-              activeTab === 'overview'
-                ? 'bg-white dark:bg-zinc-700 text-slate-800 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200'
-            }`}
-          >
-            <BarChart3 size={14} />
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('bidders')}
-            className={`flex shrink-0 items-center gap-2 px-3 sm:px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
-              activeTab === 'bidders'
-                ? 'bg-white dark:bg-zinc-700 text-slate-800 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200'
-            }`}
-          >
-            <Users size={14} />
-            Bidder Catalogue
-          </button>
-          <button
-            onClick={() => setActiveTab('matrix')}
-            className={`flex shrink-0 items-center gap-2 px-3 sm:px-4 py-1.5 text-xs font-bold rounded-lg cursor-pointer transition-colors ${
-              activeTab === 'matrix'
-                ? 'bg-white dark:bg-zinc-700 text-slate-800 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200'
-            }`}
-          >
-            <Grid size={14} />
-            Checklist Matrix
-          </button>
+      {/* OVERVIEW VIEW */}
+      {view === 'overview' && (
+        <div className="space-y-6 max-w-[var(--content-max)] mx-auto">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <Card className="p-4 space-y-1">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">Total Bidders</span>
+              <p className="text-2xl font-bold text-[var(--text-primary)]">{stats.totalBidders}</p>
+            </Card>
+            <Card className="p-4 space-y-1">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">Fully Compliant</span>
+              <p className="text-2xl font-bold text-[var(--status-success)]">{stats.fullyCompliant}</p>
+            </Card>
+            <Card className="p-4 space-y-1">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">Pending Queries</span>
+              <p className="text-2xl font-bold text-[var(--status-warning)]">{stats.pendingBidders}</p>
+            </Card>
+            <Card className="p-4 space-y-1">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">Overall Compliance</span>
+              <p className="text-2xl font-bold text-[var(--brand-primary)]">{stats.cellPercentage}%</p>
+            </Card>
+          </div>
+
+          <Card className="p-6 space-y-4">
+            <h3 className="font-bold text-base text-[var(--text-primary)]">Tender Overview Details</h3>
+            <p className="text-sm text-[var(--text-muted)]">
+              This tender has <strong>{stats.totalBidders}</strong> participating bidders and <strong>{checklistItems.length}</strong> configured compliance verification points.
+            </p>
+          </Card>
         </div>
+      )}
 
-        {/* Global actions */}
-        <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
-          {activeTab === 'matrix' && (
-            <button
-              onClick={downloadExcel}
-              className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 font-semibold text-xs py-1.5 px-3.5 rounded-lg cursor-pointer transition-colors"
-            >
-              <Download size={13} /> Export Excel
-            </button>
-          )}
+      {/* BIDDERS VIEW */}
+      {view === 'bidders' && (
+        <div className="space-y-6 max-w-[var(--content-max)] mx-auto">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full max-w-md">
+              <Search size={16} className="pointer-events-none absolute left-3 top-3.5 text-[var(--text-muted)]" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search bidders..."
+                className="min-h-11 w-full rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] pl-10 pr-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--brand-primary)]"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => setIsImporting(true)}>
+                <Upload size={16} /> Import Bidders
+              </Button>
+              <Button onClick={openAddModal}>
+                <Plus size={16} /> Add Single Bidder
+              </Button>
+            </div>
+          </div>
 
-          <button
-            onClick={openAddModal}
-            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs py-1.5 px-3.5 rounded-lg shadow-sm cursor-pointer transition-colors"
-          >
-            <Plus size={14} /> Add Bidder
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content Pane */}
-      <div className="min-w-0 flex-1 overflow-y-auto p-3 sm:p-6">
-        <div className="max-w-7xl mx-auto h-full">
-
-          {/* OVERVIEW TAB */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              
-              {/* Stat Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-5 rounded-2xl shadow-sm space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Total Bidders</span>
-                  <p className="text-3xl font-extrabold text-slate-800 dark:text-white">{stats.totalBidders}</p>
-                </div>
-                <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-5 rounded-2xl shadow-sm space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Fully Compliant Bidders</span>
-                  <p className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-500">{stats.fullyCompliant}</p>
-                </div>
-                <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-5 rounded-2xl shadow-sm space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Bidders with Pending Queries</span>
-                  <p className="text-3xl font-extrabold text-rose-600 dark:text-rose-500">{stats.pendingBidders}</p>
-                </div>
-                <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-5 rounded-2xl shadow-sm space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Criteria Items Defined</span>
-                  <p className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-500">{checklistItems.length}</p>
-                </div>
-              </div>
-
-              {/* Progress Summary Card */}
-              <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm">
-                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                  Overall Compliance Breakdown
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Distribution of document submissions and clause acceptances across all bidder cells.
-                </p>
-
-                <div className="relative mt-6">
-                  {/* Distribution Bar */}
-                  <div className="h-6 w-full bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden flex">
-                    <div 
-                      className="bg-emerald-500 h-full transition-all duration-500" 
-                      style={{ width: `${stats.totalCells > 0 ? (stats.compliantCells / stats.totalCells) * 100 : 0}%` }}
-                      title="Submitted / Accepted"
-                    />
-                    <div 
-                      className="bg-rose-500 h-full transition-all duration-500" 
-                      style={{ width: `${stats.totalCells > 0 ? (stats.pendingCells / stats.totalCells) * 100 : 0}%` }}
-                      title="Pending / Not Accepted"
-                    />
-                    <div 
-                      className="bg-slate-400 dark:bg-zinc-600 h-full transition-all duration-500"
-                      style={{ width: `${stats.totalCells > 0 ? (stats.naCells / stats.totalCells) * 100 : 0}%` }}
-                      title="Not Applicable"
-                    />
+          {filteredBidders.length === 0 ? (
+            <EmptyState
+              title="No bidders found"
+              description="Add bidders manually or import them via CSV/Excel spreadsheet."
+              action={
+                <Button onClick={openAddModal}>
+                  <Plus size={16} /> Add Bidder
+                </Button>
+              }
+            />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredBidders.map((b) => (
+                <Card key={b.id} hoverable className="p-5 flex flex-col justify-between space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between">
+                      <h3 className="font-bold text-base text-[var(--text-primary)] truncate">{b.name}</h3>
+                      <button
+                        onClick={() => openEmailModal(b)}
+                        className="text-[var(--brand-primary)] hover:underline text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Mail size={14} /> Draft Email
+                      </button>
+                    </div>
+                    <p className="text-xs text-[var(--text-muted)] truncate">{b.email}</p>
+                    <div className="text-xs text-[var(--text-secondary)] space-y-0.5 pt-1">
+                      <p>Contact: <strong>{b.contactPerson}</strong></p>
+                      <p>Phone: <strong>{b.phone}</strong></p>
+                    </div>
                   </div>
 
-                  {/* Labels */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 text-xs font-semibold text-slate-500 dark:text-zinc-400">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 bg-emerald-500 rounded-full" />
-                      <span>Compliant: {stats.compliantCells} ({stats.totalCells > 0 ? Math.round((stats.compliantCells / stats.totalCells) * 100) : 0}%)</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 bg-rose-500 rounded-full" />
-                      <span>Pending/Observations: {stats.pendingCells} ({stats.totalCells > 0 ? Math.round((stats.pendingCells / stats.totalCells) * 100) : 0}%)</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 bg-slate-400 dark:bg-zinc-600 rounded-full" />
-                      <span>Not Applicable: {stats.naCells} ({stats.totalCells > 0 ? Math.round((stats.naCells / stats.totalCells) * 100) : 0}%)</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {/* BIDDER CATALOGUE TAB */}
-          {activeTab === 'bidders' && (
-            <div className="space-y-4">
-              
-              {/* Search input */}
-              <div className="relative max-w-md w-full bg-white dark:bg-zinc-900 rounded-xl shadow-sm">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                  <Search size={14} />
-                </span>
-                <input
-                  type="text"
-                  placeholder="Search bidders by name or contact..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-xs rounded-xl focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white"
-                />
-              </div>
-
-              {/* Grid Layout */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
-                {filteredBidders.map(bidder => {
-                  const details = getBidderStats(bidder);
-                  return (
-                    <div 
-                      key={bidder.id} 
-                      className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow"
-                    >
-                      {/* Header */}
-                      <div>
-                        <div className="flex items-start justify-between">
-                          <h4 className="font-bold text-sm text-slate-800 dark:text-white truncate max-w-[200px]" title={bidder.name}>
-                            {bidder.name}
-                          </h4>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                            details.pending === 0 
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50'
-                              : 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/50'
-                          }`}>
-                            {details.pending === 0 ? 'Compliant' : `${details.pending} Pending`}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-400 truncate mt-1">Contact: {bidder.contactPerson}</p>
-                      </div>
-
-                      {/* Stats & Progress */}
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between items-center text-[10px] font-semibold text-slate-500 dark:text-zinc-400">
-                          <span>Progress</span>
-                          <span>{details.progress}% Complete</span>
-                        </div>
-                        <div className="h-2 w-full bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                          <div 
-                            className="bg-indigo-600 h-full transition-all duration-300"
-                            style={{ width: `${details.progress}%` }}
-                          />
-                        </div>
-                        <div className="flex justify-between text-[9px] text-slate-400 font-bold uppercase">
-                          <span className="text-emerald-600 dark:text-emerald-500">{details.compliant} Yes</span>
-                          <span className="text-rose-600 dark:text-rose-500">{details.pending} Observations</span>
-                          <span>{details.na} N/A</span>
-                        </div>
-                      </div>
-
-                      {/* Details & Actions */}
-                      <div className="border-t border-slate-100 dark:border-zinc-800 pt-3 space-y-3">
-                        <div className="text-[10px] text-slate-500 space-y-1">
-                          <p className="truncate"><strong className="text-slate-600 dark:text-zinc-400">Email:</strong> {bidder.email}</p>
-                          <p><strong className="text-slate-600 dark:text-zinc-400">Tel:</strong> {bidder.phone}</p>
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => openEmailModal(bidder)}
-                            className="flex-1 flex items-center justify-center gap-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 font-bold text-[10px] py-1.5 rounded-lg cursor-pointer transition-colors"
-                          >
-                            <Mail size={12} /> Compliance Email
-                          </button>
-                          <button
-                            onClick={() => openEditModal(bidder)}
-                            className="p-1.5 border border-slate-200 dark:border-zinc-700 text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
-                            title="Edit Bidder"
-                          >
-                            <Edit2 size={12} />
-                          </button>
-                          {currentUser.role !== 'guest' && (
-                            <button
-                              onClick={() => setDeletingBidder(bidder)}
-                              className="p-1.5 border border-rose-200 dark:border-rose-900 text-rose-500 hover:text-rose-700 dark:hover:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg cursor-pointer transition-colors"
-                              title="Delete Bidder"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* CHECKLIST MATRIX TAB (Spreadsheet scroll view) */}
-          {activeTab === 'matrix' && (
-            <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden flex flex-col h-full max-h-[calc(100dvh-210px)]">
-              <div className="overflow-auto flex-1 relative">
-                <table className="border-collapse w-max min-w-full text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-zinc-800/50 text-slate-500 dark:text-zinc-400">
-                      {/* Sticky Top-Left Corner cell */}
-                      <th className="sticky left-0 top-0 z-35 bg-slate-50 dark:bg-zinc-800 p-4 font-bold text-left border-r border-b border-slate-200 dark:border-zinc-700 shadow-[inset_-1px_-1px_0_var(--border-color)]">
-                        Checklist Criteria / क्राइटेरिया
-                      </th>
-                      {/* Bidder Column Headers */}
-                      {bidders.map(bidder => (
-                        <th 
-                          key={bidder.id} 
-                          className="sticky top-0 z-10 bg-slate-50 dark:bg-zinc-800 p-4 font-bold border-r border-b border-slate-200 dark:border-zinc-700 text-left min-w-[200px] shadow-[inset_0_-1px_0_var(--border-color)]"
+                  <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs">
+                    <span className="text-[10px] text-[var(--text-muted)]">
+                      {b.lastDraftedSentAt
+                        ? `Last drafted/sent: ${new Date(b.lastDraftedSentAt).toLocaleDateString()} by ${b.lastDraftedSentByName || 'Admin'}`
+                        : 'Not yet drafted/sent'}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => openEditModal(b)}
+                        className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                        title="Edit Bidder"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      {currentUser.role !== 'guest' && (
+                        <button
+                          onClick={() => setDeletingBidder(b)}
+                          className="p-1 text-[var(--text-muted)] hover:text-[var(--status-danger-text)] cursor-pointer"
+                          title="Delete Bidder"
                         >
-                          <div className="flex flex-col">
-                            <span className="text-slate-800 dark:text-slate-100 font-extrabold truncate max-w-[180px]">{bidder.name}</span>
-                            <span className="text-[10px] text-slate-400 font-medium truncate max-w-[180px]">{bidder.email}</span>
-                            <div className="flex items-center gap-1.5 mt-2">
-                              <button
-                                onClick={() => openEmailModal(bidder)}
-                                className="p-1 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-zinc-700 rounded text-[9px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                <Mail size={10} /> Email
-                              </button>
-                              <button
-                                onClick={() => openEditModal(bidder)}
-                                className="p-1 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700 rounded text-[9px] cursor-pointer transition-colors"
-                              >
-                                Edit
-                              </button>
-                            </div>
-                          </div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-zinc-800">
-                    {checklistItems.map(item => {
-                      const isSubmission = item.category === 'submission';
-                      const isCustomTextItem = item.category === 'text_note';
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
+      {/* COMPLIANCE MATRIX VIEW */}
+      {view === 'matrix' && (
+        <div className="space-y-4 max-w-[var(--content-max)] mx-auto">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="font-bold text-base text-[var(--text-primary)]">Compliance Verification Matrix</h3>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => setIsImporting(true)}>
+                <Upload size={16} /> Import Bidders
+              </Button>
+              <Button variant="secondary" onClick={downloadExcel}>
+                <Download size={16} /> Export Excel
+              </Button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto border border-[var(--border-subtle)] rounded-[var(--radius-md)] bg-[var(--bg-surface)] shadow-xs">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead className="bg-[var(--bg-subtle)] border-b border-[var(--border-subtle)] font-bold text-[var(--text-secondary)]">
+                <tr>
+                  <th className="p-3 min-w-48 sticky left-0 bg-[var(--bg-subtle)] z-10 border-r border-[var(--border-subtle)]">
+                    Criteria Item
+                  </th>
+                  {bidders.map(b => (
+                    <th key={b.id} className="p-3 text-center min-w-36 border-r border-[var(--border-subtle)]">
+                      <span className="font-bold block truncate">{b.name}</span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-subtle)]">
+                {checklistItems.map(item => (
+                  <tr key={item.id} className="hover:bg-[var(--bg-subtle)]/40 transition-colors">
+                    <td className="p-3 font-semibold text-[var(--text-primary)] sticky left-0 bg-[var(--bg-surface)] z-10 border-r border-[var(--border-subtle)]">
+                      {item.label}
+                    </td>
+                    {bidders.map(b => {
+                      const statusObj = b.statuses.find(s => s.checklistItemId === item.id);
+                      const currentStatus = statusObj?.status || (item.category === 'acceptance' ? 'not_accepted' : 'not_submitted');
+                      
                       return (
-                        <tr key={item.id} className="hover:bg-slate-50/20 dark:hover:bg-zinc-800/10">
-                          {/* Sticky Left Criteria Label Column */}
-                          <td className="sticky left-0 z-20 bg-white dark:bg-zinc-900 p-4 border-r border-slate-200 dark:border-zinc-700 font-bold text-slate-800 dark:text-slate-200 shadow-[inset_-1px_0_0_var(--border-color)] max-w-[280px] break-words">
-                            <div className="space-y-1">
-                              <span className="leading-tight block">{item.label}</span>
-                              <span className={`inline-flex px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase ${
-                                isSubmission 
-                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
-                                  : item.category === 'text_note'
-                                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                                    : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
-                              }`}>
-                                {isSubmission ? 'Submission' : item.category === 'text_note' ? 'Text Note' : 'Acceptance'}
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Bidder Compliance Status Cells */}
-                          {bidders.map(bidder => {
-                            const statusObj = bidder.statuses.find(s => s.checklistItemId === item.id);
-                            const currentStatus = statusObj?.status;
-
-                            if (isCustomTextItem) {
-                              return (
-                                <td 
-                                  key={bidder.id} 
-                                  className="p-4 border-r border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 min-w-[220px]"
-                                >
-                                  <DeviationTextInput
-                                    bidderId={bidder.id}
-                                    itemId={item.id}
-                                    initialValue={currentStatus || ''}
-                                    onSave={handleStatusChange}
-                                  />
-                                </td>
-                              );
-                            }
-
-                            return (
-                              <td 
-                                key={bidder.id} 
-                                className="p-4 border-r border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
-                              >
-                                <div className="inline-flex bg-slate-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-slate-200 dark:border-zinc-700">
-                                  {isSubmission ? (
-                                    <>
-                                      <button
-                                        onClick={() => handleStatusChange(bidder.id, item.id, 'submitted')}
-                                        className={`px-2 py-1 text-[10px] font-bold rounded-md cursor-pointer transition-colors ${
-                                          currentStatus === 'submitted'
-                                            ? 'bg-emerald-600 text-white shadow-sm'
-                                            : 'text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200'
-                                        }`}
-                                      >
-                                        Sub
-                                      </button>
-                                      <button
-                                        onClick={() => handleStatusChange(bidder.id, item.id, 'not_submitted')}
-                                        className={`px-2 py-1 text-[10px] font-bold rounded-md cursor-pointer transition-colors ${
-                                          currentStatus === 'not_submitted'
-                                            ? 'bg-rose-600 text-white shadow-sm'
-                                            : 'text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200'
-                                        }`}
-                                      >
-                                        Pen
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <button
-                                        onClick={() => handleStatusChange(bidder.id, item.id, 'accepted')}
-                                        className={`px-2 py-1 text-[10px] font-bold rounded-md cursor-pointer transition-colors ${
-                                          currentStatus === 'accepted'
-                                            ? 'bg-emerald-600 text-white shadow-sm'
-                                            : 'text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200'
-                                        }`}
-                                      >
-                                        Acc
-                                      </button>
-                                      <button
-                                        onClick={() => handleStatusChange(bidder.id, item.id, 'not_accepted')}
-                                        className={`px-2 py-1 text-[10px] font-bold rounded-md cursor-pointer transition-colors ${
-                                          currentStatus === 'not_accepted'
-                                            ? 'bg-rose-600 text-white shadow-sm'
-                                            : 'text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200'
-                                        }`}
-                                      >
-                                        Dev
-                                      </button>
-                                    </>
-                                  )}
-                                  <button
-                                    onClick={() => handleStatusChange(bidder.id, item.id, 'not_applicable')}
-                                    className={`px-2 py-1 text-[10px] font-bold rounded-md cursor-pointer transition-colors ${
-                                      currentStatus === 'not_applicable'
-                                        ? 'bg-slate-400 dark:bg-zinc-600 text-white shadow-sm'
-                                        : 'text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200'
-                                    }`}
-                                  >
-                                    N/A
-                                  </button>
-                                </div>
-                              </td>
-                            );
-                          })}
-                        </tr>
+                        <td key={b.id} className="p-2 text-center border-r border-[var(--border-subtle)]">
+                          {item.category === 'submission' ? (
+                            <select
+                              value={currentStatus}
+                              onChange={(e) => handleCellStatusChange(b.id, item.id, e.target.value)}
+                              className="p-1 rounded text-xs font-semibold cursor-pointer border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-primary)]"
+                            >
+                              <option value="submitted">Submitted</option>
+                              <option value="not_submitted">Pending</option>
+                              <option value="not_applicable">N/A</option>
+                            </select>
+                          ) : item.category === 'acceptance' ? (
+                            <select
+                              value={currentStatus}
+                              onChange={(e) => handleCellStatusChange(b.id, item.id, e.target.value)}
+                              className="p-1 rounded text-xs font-semibold cursor-pointer border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-primary)]"
+                            >
+                              <option value="accepted">Accepted</option>
+                              <option value="not_accepted">Not Accepted</option>
+                              <option value="not_applicable">N/A</option>
+                            </select>
+                          ) : (
+                            <DeviationTextInput
+                              bidderId={b.id}
+                              itemId={item.id}
+                              initialValue={currentStatus}
+                              onSave={(bId, iId, val) => handleCellStatusChange(bId, iId, val)}
+                            />
+                          )}
+                        </td>
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* ADD BIDDER DIALOG MODAL */}
-      <Dialog
-        isOpen={isAddingBidder}
-        onClose={() => setIsAddingBidder(false)}
-        title="Add New Bidder"
-        size="sm"
-      >
+      {/* ADD SINGLE BIDDER MODAL */}
+      <Dialog isOpen={isAddingBidder} onClose={() => setIsAddingBidder(false)} title="Add Single Bidder" size="md">
         <form onSubmit={handleAddBidder} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Bidder Name / Company</label>
-            <input
-              type="text"
-              required
-              value={bidderName}
-              onChange={(e) => setBidderName(e.target.value)}
-              placeholder="e.g. Acme Corporation"
-              className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-white border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Email Address</label>
-            <input
-              type="email"
-              required
-              value={bidderEmail}
-              onChange={(e) => setBidderEmail(e.target.value)}
-              placeholder="bidder@domain.com"
-              className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-white border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Contact Person</label>
-              <input
-                type="text"
-                required
-                value={contactPerson}
-                onChange={(e) => setContactPerson(e.target.value)}
-                placeholder="John Doe"
-                className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-white border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Phone / Tel</label>
-              <input
-                type="text"
-                required
-                value={bidderPhone}
-                onChange={(e) => setBidderPhone(e.target.value)}
-                placeholder="099-XXXXXXX"
-                className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-white border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-          </div>
+          <Input label="Bidder / Company Name" required value={bidderName} onChange={(e) => setBidderName(e.target.value)} />
+          <Input label="Email Address" type="email" required value={bidderEmail} onChange={(e) => setBidderEmail(e.target.value)} />
+          <Input label="Contact Person Name" required value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
+          <Input label="Phone Number" required value={bidderPhone} onChange={(e) => setBidderPhone(e.target.value)} />
 
           <div className="flex justify-end gap-3 pt-3">
-            <button
-              type="button"
-              onClick={() => setIsAddingBidder(false)}
-              className="px-4 py-2 border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400 rounded-lg text-xs font-semibold cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              {isSaving && <Loader2 size={12} className="animate-spin" />}
-              Create Bidder
-            </button>
+            <Button type="button" variant="secondary" onClick={() => setIsAddingBidder(false)}>Cancel</Button>
+            <Button type="submit" isLoading={isSaving}>Add Bidder</Button>
           </div>
         </form>
       </Dialog>
 
-      {/* EDIT BIDDER DIALOG MODAL */}
-      <Dialog
-        isOpen={editingBidder !== null}
-        onClose={() => setEditingBidder(null)}
-        title={`Edit Details for ${editingBidder?.name}`}
-        size="sm"
-      >
+      {/* EDIT BIDDER MODAL */}
+      <Dialog isOpen={editingBidder !== null} onClose={() => setEditingBidder(null)} title="Edit Bidder Details" size="md">
         <form onSubmit={handleEditBidder} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Bidder Name / Company</label>
-            <input
-              type="text"
-              required
-              value={bidderName}
-              onChange={(e) => setBidderName(e.target.value)}
-              className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-white border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Email Address</label>
-            <input
-              type="email"
-              required
-              value={bidderEmail}
-              onChange={(e) => setBidderEmail(e.target.value)}
-              className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-white border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Contact Person</label>
-              <input
-                type="text"
-                required
-                value={contactPerson}
-                onChange={(e) => setContactPerson(e.target.value)}
-                className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-white border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Phone / Tel</label>
-              <input
-                type="text"
-                required
-                value={bidderPhone}
-                onChange={(e) => setBidderPhone(e.target.value)}
-                className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-white border border-slate-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-          </div>
+          <Input label="Bidder / Company Name" required value={bidderName} onChange={(e) => setBidderName(e.target.value)} />
+          <Input label="Email Address" type="email" required value={bidderEmail} onChange={(e) => setBidderEmail(e.target.value)} />
+          <Input label="Contact Person Name" required value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
+          <Input label="Phone Number" required value={bidderPhone} onChange={(e) => setBidderPhone(e.target.value)} />
 
           <div className="flex justify-end gap-3 pt-3">
-            <button
-              type="button"
-              onClick={() => setEditingBidder(null)}
-              className="px-4 py-2 border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400 rounded-lg text-xs font-semibold cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              {isSaving && <Loader2 size={12} className="animate-spin" />}
-              Save Details
-            </button>
+            <Button type="button" variant="secondary" onClick={() => setEditingBidder(null)}>Cancel</Button>
+            <Button type="submit" isLoading={isSaving}>Save Changes</Button>
           </div>
         </form>
       </Dialog>
 
-      {/* DELETE BIDDER CONFIRMATION DIALOG MODAL */}
-      <Dialog
-        isOpen={deletingBidder !== null}
-        onClose={() => setDeletingBidder(null)}
-        title="Delete Bidder"
-        size="sm"
-      >
+      {/* DELETE BIDDER MODAL */}
+      <Dialog isOpen={deletingBidder !== null} onClose={() => setDeletingBidder(null)} title="Delete Bidder" size="sm">
         <div className="space-y-4">
-          <p className="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed">
+          <p className="text-xs text-[var(--text-secondary)]">
             Are you sure you want to delete bidder <strong>{deletingBidder?.name}</strong>?
           </p>
-          <p className="text-xs text-rose-500 font-bold bg-rose-950/20 border border-rose-900/30 p-2.5 rounded-lg">
-            ⚠️ This will permanently delete all of this bidder's records and compliance statuses. This action cannot be undone.
-          </p>
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setDeletingBidder(null)}
-              className="px-4 py-2 border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400 rounded-lg text-xs font-semibold cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleDeleteBidder}
-              disabled={isSaving}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              {isSaving && <Loader2 size={12} className="animate-spin" />}
-              Delete Bidder
-            </button>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setDeletingBidder(null)}>Cancel</Button>
+            <Button variant="danger" isLoading={isSaving} onClick={handleDeleteBidder}>Delete</Button>
           </div>
         </div>
       </Dialog>
 
-      {/* EMAIL DRAFT VIEW DIALOG MODAL */}
-      <Dialog
-        isOpen={emailBidder !== null}
-        onClose={() => setEmailBidder(null)}
-        title={`Bilingual Compliance Email for ${emailBidder?.name}`}
-        size="lg"
-      >
-        <div className="space-y-4">
-          {tender.subjectLine === null && (
-            <div className="p-2 border border-amber-900/30 bg-amber-950/20 text-amber-500 rounded-lg text-[10px] font-bold">
-              ℹ️ Tip: Customize the formal Subject Line suffix on the sidebar settings panel.
+      {/* SINGLE BIDDER EMAIL DRAFT MODAL */}
+      <Dialog isOpen={emailBidder !== null} onClose={() => setEmailBidder(null)} title={`Compliance Email — ${emailBidder?.name}`} size="lg">
+        {emailBidder && (
+          <div className="space-y-4">
+            {/* Flagged Observations Summary Line */}
+            <div className="p-3 rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] border border-[var(--border-subtle)] flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 font-semibold text-[var(--text-primary)]">
+                <Info size={16} className="text-[var(--brand-primary)] shrink-0" />
+                <span>Flagged Observations: <strong>{draftSummary}</strong></span>
+              </div>
+              <Badge tone="warning">Action Required</Badge>
             </div>
-          )}
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400">Subject</label>
-            <input
-              type="text"
-              value={draftSubject}
-              onChange={(e) => setDraftSubject(e.target.value)}
-              className="w-full text-xs p-2 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-lg font-semibold text-slate-800 dark:text-white focus:outline-none"
-            />
-          </div>
+            {/* Warning if already sent */}
+            {isRecentlyDraftedSent && (
+              <div className="p-3 rounded-[var(--radius-sm)] bg-[var(--status-warning-bg)] border border-[var(--status-warning)]/30 text-[var(--status-warning-text)] text-xs font-semibold flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={16} className="shrink-0" />
+                  <span>Already drafted/sent on {new Date(emailBidder.lastDraftedSentAt!).toLocaleDateString()} by {emailBidder.lastDraftedSentByName || 'Admin'}.</span>
+                </div>
+                <label className="flex items-center gap-1.5 cursor-pointer shrink-0 select-none font-bold">
+                  <input
+                    type="checkbox"
+                    checked={confirmResend}
+                    onChange={(e) => setConfirmResend(e.target.checked)}
+                    className="accent-[var(--brand-primary)] cursor-pointer"
+                  />
+                  Confirm Re-send
+                </label>
+              </div>
+            )}
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400">Email Body</label>
-            <textarea
-              value={draftBody}
-              onChange={(e) => setDraftBody(e.target.value)}
-              rows={15}
-              className="w-full text-xs p-3 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-lg font-mono text-slate-800 dark:text-zinc-300 focus:outline-none leading-relaxed"
-            />
-          </div>
+            <Input label="Email Subject" value={draftSubject} onChange={(e) => setDraftSubject(e.target.value)} />
+            <Textarea label="Email Body" rows={10} value={draftBody} onChange={(e) => setDraftBody(e.target.value)} className="font-mono text-xs" />
 
-          <div className="flex items-center justify-between border-t border-slate-100 dark:border-zinc-800 pt-3">
-            <span className="text-[10px] text-slate-400">
-              * Click "Copy Text" or click "Open in Mail Client" to launch standard mailto link.
-            </span>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleCopyEmail}
-                className="px-4 py-2 border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
-              >
-                {isCopied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
-                {isCopied ? 'Copied' : 'Copy Text'}
-              </button>
-              <button
-                onClick={handleMailto}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
-              >
-                <Mail size={12} /> Open in Mail Client
-              </button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-[var(--border-subtle)] pt-3">
+              <span className="text-[10px] text-[var(--text-muted)]">
+                Recipient: {emailBidder.contactPerson} &lt;{emailBidder.email}&gt;
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="secondary" size="sm" onClick={handleManualMarkAsSent}>
+                  <Send size={14} /> Mark as Sent
+                </Button>
+                <Button variant="secondary" size="sm" onClick={handleCopyEmail}>
+                  {isCopied ? <Check size={14} className="text-[var(--status-success)]" /> : <Copy size={14} />}
+                  {isCopied ? 'Copied' : 'Copy Text'}
+                </Button>
+                <Button size="sm" onClick={handleMailto}>
+                  <Mail size={14} /> Open in Mail Client
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </Dialog>
 
+      {/* CSV/EXCEL IMPORT MODAL */}
+      <BidderImportModal
+        isOpen={isImporting}
+        onClose={() => setIsImporting(false)}
+        tenderId={tender.id}
+        onSuccess={() => router.refresh()}
+      />
     </div>
   );
 }

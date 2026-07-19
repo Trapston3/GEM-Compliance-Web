@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { FileText, Lock, Mail, Loader2, Eye, EyeOff } from 'lucide-react';
+import { FileText, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
+import { Button, Card, Input } from '@/components/ui/primitives';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,7 +30,6 @@ export default function LoginPage() {
       });
 
       if (res?.error) {
-        // NextAuth sends "CredentialsSignin" or custom errors
         if (res.error.includes('Too many failed attempts')) {
           setErrorMsg('Too many failed attempts. Try again in 15 minutes.');
           toast('Account locked temporarily due to failed attempts.', 'error');
@@ -39,7 +39,6 @@ export default function LoginPage() {
         }
       } else {
         toast('Logged in successfully', 'success');
-        // Redirect to dashboard
         router.push('/');
         router.refresh();
       }
@@ -51,88 +50,62 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-zinc-950 p-4 transition-colors duration-200">
-      <div className="max-w-md w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl p-8 space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg-app)] p-4 transition-colors duration-200">
+      <Card className="max-w-md w-full p-8 space-y-6">
         
         {/* Logo / Branding */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="bg-indigo-600 text-white p-3 rounded-2xl shadow-md">
+          <div className="bg-[var(--brand-primary)] text-white p-3 rounded-[var(--radius-md)] shadow-sm">
             <FileText size={28} />
           </div>
-          <h2 className="text-xl font-extrabold text-slate-800 dark:text-white">
-            MRPL Materials Department
+          <h2 className="text-xl font-extrabold text-[var(--text-primary)]">
+            Materials Department
           </h2>
-          <p className="text-xs text-slate-500 dark:text-zinc-400">
-            Tender Compliance Tracker login
+          <p className="text-xs text-[var(--text-muted)]">
+            Tender Compliance Tracker Login
           </p>
         </div>
 
         {errorMsg && (
-          <div className="p-3 text-xs font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 rounded-lg">
+          <div className="p-3 text-xs font-semibold text-[var(--status-danger-text)] bg-[var(--status-danger-bg)] border border-[var(--status-danger)]/30 rounded-[var(--radius-sm)]">
             {errorMsg}
           </div>
         )}
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-600 dark:text-zinc-400 block">
-              Email Address
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                <Mail size={16} />
-              </span>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@mrpl.co.in"
-                className="w-full pl-10 pr-3 py-2 bg-slate-50 dark:bg-zinc-800/50 text-sm border border-slate-200 dark:border-zinc-700/50 rounded-xl focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500 text-slate-800 dark:text-white transition-colors"
-              />
-            </div>
+          <Input
+            label="Email Address"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="email@mrpl.co.in"
+          />
+
+          <div className="space-y-1 relative">
+            <Input
+              label="Password"
+              type={showPassword ? 'text' : 'password'}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-2 top-[26px] flex min-h-11 min-w-11 items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-600 dark:text-zinc-400 block">
-              Password
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                <Lock size={16} />
-              </span>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-10 py-2 bg-slate-50 dark:bg-zinc-800/50 text-sm border border-slate-200 dark:border-zinc-700/50 rounded-xl focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500 text-slate-800 dark:text-white transition-colors"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200"
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white font-semibold text-sm py-2.5 px-4 rounded-xl shadow-md cursor-pointer transition-colors disabled:opacity-50"
-          >
-            {isLoading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              'Sign In'
-            )}
-          </button>
+          <Button type="submit" isLoading={isLoading} className="w-full mt-2">
+            Sign In
+          </Button>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }

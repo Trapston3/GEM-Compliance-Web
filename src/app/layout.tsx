@@ -1,14 +1,8 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ToastProvider } from '@/components/ui/toast';
 import { SessionProvider } from 'next-auth/react';
-
-const inter = Inter({
-  variable: '--font-sans',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
   title: 'Tender Compliance Tracker',
@@ -21,8 +15,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full`} suppressHydrationWarning>
-      <body className="h-full font-sans bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 transition-colors duration-200 antialiased overflow-hidden">
+    <html lang="en" className="h-full" suppressHydrationWarning>
+      <body className="h-full overflow-hidden bg-[var(--mrpl-paper-50)] font-sans text-[var(--mrpl-ink-950)] antialiased transition-colors duration-200">
         <SessionProvider>
           <ThemeProvider>
             <ToastProvider>

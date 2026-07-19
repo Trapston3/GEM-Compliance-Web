@@ -6,6 +6,7 @@ import { auth } from '@/auth';
 import { logActivity } from '@/lib/auditLog';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { assertTenderAccess } from '@/lib/tenderAccess';
 
 const AddBidderSchema = z.object({
   tenderId: z.number(),
@@ -29,16 +30,24 @@ const UpdateStatusSchema = z.object({
   status: z.string(),
 });
 
+const BulkImportSchema = z.object({
+  tenderId: z.number(),
+  biddersList: z.array(z.object({
+    name: z.string().min(1, "Bidder name is required"),
+    email: z.string().email("Invalid email address"),
+    contactPerson: z.string().min(1, "Contact person is required"),
+    phone: z.string().min(1, "Phone is required"),
+  })).min(1, "At least one bidder required"),
+});
+
 export async function getBidders(tenderId: number) {
   const session = await auth();
   if (!session) {
     throw new Error('Unauthorized');
   }
 
-  // Fetch bidders
+  await assertTenderAccess(tenderId, session);
   const bidderList = await db.select().from(bidders).where(eq(bidders.tenderId, tenderId));
-  
-  // Fetch statuses for these bidders
   const statusList = await db.select().from(bidderStatuses);
 
   return bidderList.map(b => {
@@ -57,8 +66,8 @@ export async function addBidder(data: { tenderId: number; name: string; email: s
   }
 
   const validated = AddBidderSchema.parse(data);
+  await assertTenderAccess(validated.tenderId, session);
 
-  // 1. Insert Bidder
   const [newBidder] = await db.insert(bidders).values({
     tenderId: validated.tenderId,
     name: validated.name,
@@ -67,12 +76,9 @@ export async function addBidder(data: { tenderId: number; name: string; email: s
     phone: validated.phone,
   }).returning();
 
-  // 2. Fetch all checklist items for this tender to seed defaults
   const items = await db.select().from(checklistItems).where(eq(checklistItems.tenderId, validated.tenderId));
-
   const userId = parseInt((session.user as any).id, 10);
 
-  // Seed default statuses
   for (const item of items) {
     const defaultStatus = item.category === 'acceptance' ? 'not_accepted' : 'not_submitted';
     await db.insert(bidderStatuses).values({
@@ -83,7 +89,6 @@ export async function addBidder(data: { tenderId: number; name: string; email: s
     });
   }
 
-  // Log activity
   await logActivity('bidder.create', {
     bidderId: newBidder.id,
     bidderName: newBidder.name,
@@ -94,6 +99,53 @@ export async function addBidder(data: { tenderId: number; name: string; email: s
   return { success: true };
 }
 
+export async function importBidders(data: { tenderId: number; biddersList: { name: string; email: string; contactPerson: string; phone: string }[] }) {
+  const session = await auth();
+  if (!session) {
+    throw new Error('Unauthorized');
+  }
+
+  const validated = BulkImportSchema.parse(data);
+  await assertTenderAccess(validated.tenderId, session);
+
+  const items = await db.select().from(checklistItems).where(eq(checklistItems.tenderId, validated.tenderId));
+  const userId = parseInt((session.user as any).id, 10);
+  let importedCount = 0;
+
+  for (const b of validated.biddersList) {
+    const [inserted] = await db.insert(bidders).values({
+      tenderId: validated.tenderId,
+      name: b.name.trim(),
+      email: b.email.trim(),
+      contactPerson: b.contactPerson.trim(),
+      phone: b.phone.trim(),
+    }).returning();
+
+    for (const item of items) {
+      const defaultStatus = item.category === 'acceptance' ? 'not_accepted' : 'not_submitted';
+      await db.insert(bidderStatuses).values({
+        bidderId: inserted.id,
+        checklistItemId: item.id,
+        status: defaultStatus,
+        updatedBy: userId,
+      });
+    }
+    importedCount++;
+  }
+
+  // Single audit log entry summarizing the bulk import
+  await logActivity('bidder.bulk_import', {
+    count: importedCount,
+  }, validated.tenderId);
+
+  revalidatePath(`/tenders/${validated.tenderId}/bidders`);
+  revalidatePath(`/tenders/${validated.tenderId}/matrix`);
+  revalidatePath(`/tenders/${validated.tenderId}/overview`);
+  revalidatePath('/');
+
+  return { success: true, count: importedCount };
+}
+
 export async function updateBidder(data: { id: number; name: string; email: string; contactPerson: string; phone: string }) {
   const session = await auth();
   if (!session) {
@@ -101,13 +153,12 @@ export async function updateBidder(data: { id: number; name: string; email: stri
   }
 
   const validated = UpdateBidderSchema.parse(data);
-
   const [oldBidder] = await db.select().from(bidders).where(eq(bidders.id, validated.id)).limit(1);
   if (!oldBidder) {
     throw new Error('Bidder not found');
   }
+  await assertTenderAccess(oldBidder.tenderId, session);
 
-  // Update
   await db.update(bidders)
     .set({
       name: validated.name,
@@ -117,7 +168,6 @@ export async function updateBidder(data: { id: number; name: string; email: stri
     })
     .where(eq(bidders.id, validated.id));
 
-  // Log activity
   await logActivity('bidder.update', {
     bidderId: validated.id,
     oldName: oldBidder.name,
@@ -136,7 +186,6 @@ export async function deleteBidder(id: number) {
     throw new Error('Unauthorized');
   }
 
-  // GUEST protection
   const role = (session.user as any).role;
   if (role === 'guest') {
     throw new Error('Guests are not permitted to delete bidders.');
@@ -146,11 +195,10 @@ export async function deleteBidder(id: number) {
   if (!bidder) {
     throw new Error('Bidder not found');
   }
+  await assertTenderAccess(bidder.tenderId, session);
 
-  // Delete
   await db.delete(bidders).where(eq(bidders.id, id));
 
-  // Log activity
   await logActivity('bidder.delete', {
     bidderId: id,
     bidderName: bidder.name,
@@ -169,13 +217,14 @@ export async function updateBidderStatus(data: { bidderId: number; checklistItem
   const validated = UpdateStatusSchema.parse(data);
   const userId = parseInt((session.user as any).id, 10);
 
-  // 1. Fetch the checklist item to check its category
   const [item] = await db.select().from(checklistItems).where(eq(checklistItems.id, validated.checklistItemId)).limit(1);
   if (!item) {
     throw new Error('Checklist item not found');
   }
+  const [bidderForAccess] = await db.select().from(bidders).where(eq(bidders.id, validated.bidderId)).limit(1);
+  if (!bidderForAccess || bidderForAccess.tenderId !== item.tenderId) throw new Error('Tender not found');
+  await assertTenderAccess(item.tenderId, session);
 
-  // 2. Validate status value against category server-side
   const isCustomTextItem = item.category === 'text_note';
   if (isCustomTextItem) {
     if (validated.status.length > 1000) {
@@ -195,7 +244,6 @@ export async function updateBidderStatus(data: { bidderId: number; checklistItem
     }
   }
 
-  // 3. Upsert status
   const [existing] = await db
     .select()
     .from(bidderStatuses)
@@ -224,10 +272,8 @@ export async function updateBidderStatus(data: { bidderId: number; checklistItem
     });
   }
 
-  // Fetch bidder details for logging
   const [bidder] = await db.select().from(bidders).where(eq(bidders.id, validated.bidderId)).limit(1);
 
-  // Log activity
   await logActivity('status.update', {
     bidderId: validated.bidderId,
     bidderName: bidder?.name || 'Unknown',
@@ -237,6 +283,38 @@ export async function updateBidderStatus(data: { bidderId: number; checklistItem
     newValue: validated.status,
   }, bidder?.tenderId);
 
+  revalidatePath('/');
+  return { success: true };
+}
+
+export async function markBidderAsDraftedSent(data: { bidderId: number; action: string }) {
+  const session = await auth();
+  if (!session) {
+    throw new Error('Unauthorized');
+  }
+
+  const userId = parseInt((session.user as any).id, 10);
+  const [bidder] = await db.select().from(bidders).where(eq(bidders.id, data.bidderId)).limit(1);
+  if (!bidder) {
+    throw new Error('Bidder not found');
+  }
+
+  await assertTenderAccess(bidder.tenderId, session);
+
+  await db.update(bidders)
+    .set({
+      lastDraftedSentAt: new Date(),
+      lastDraftedSentBy: userId,
+    })
+    .where(eq(bidders.id, data.bidderId));
+
+  await logActivity(data.action, {
+    bidderId: bidder.id,
+    bidderName: bidder.name,
+  }, bidder.tenderId);
+
+  revalidatePath(`/tenders/${bidder.tenderId}/emails`);
+  revalidatePath(`/tenders/${bidder.tenderId}/bidders`);
   revalidatePath('/');
   return { success: true };
 }

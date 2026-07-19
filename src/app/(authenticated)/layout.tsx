@@ -1,7 +1,7 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
-import { db, tenders, users } from '@/db';
+import { db, users } from '@/db';
 import { eq } from 'drizzle-orm';
 
 export default async function AuthenticatedLayout({
@@ -22,9 +22,6 @@ export default async function AuthenticatedLayout({
     redirect('/login');
   }
 
-  // Fetch active tender
-  const [tender] = await db.select().from(tenders).limit(1);
-
   const currentUser = {
     nameEn: dbUser.nameEn,
     email: dbUser.email,
@@ -33,8 +30,8 @@ export default async function AuthenticatedLayout({
   };
 
   return (
-    <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 transition-colors duration-200">
-      <Sidebar tender={tender || null} currentUser={currentUser} />
+    <div className="flex h-[100dvh] w-screen overflow-hidden bg-[var(--mrpl-paper-50)] text-[var(--mrpl-ink-950)] transition-colors duration-200">
+      <Sidebar tender={null} currentUser={currentUser} />
       <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
         {children}
       </div>

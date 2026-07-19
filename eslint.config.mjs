@@ -12,12 +12,20 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    ".vercel/**",
+    // Playwright output directories contain minified JS — not app source
+    "playwright-report/**",
+    "test-results/**",
+    // Test specs and scripts are not Next.js app source
+    "tests/**",
+    "scripts/**",
+    // Public static assets
+    "public/**",
   ]),
   {
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "off",
-      "react-hooks/set-state-in-effect": "off",
       "react/no-unescaped-entities": "off",
       "prefer-const": "off"
     }

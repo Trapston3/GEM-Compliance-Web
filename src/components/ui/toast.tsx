@@ -24,7 +24,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
     
-    // Auto remove after 3 seconds
+    // Auto remove after 3.5 seconds
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3500);
@@ -42,26 +42,26 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <div
             key={t.id}
             role="alert"
-            className={`flex items-center justify-between p-4 rounded-lg shadow-lg border text-sm font-medium pointer-events-auto animate-fade-in transition-all duration-300 ${
+            className={`flex items-center justify-between p-4 rounded-[var(--radius-md)] shadow-xl border text-sm font-semibold pointer-events-auto animate-fade-in transition-all duration-300 ${
               t.type === 'success'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50'
+                ? 'bg-[var(--status-success-bg)] text-[var(--status-success-text)] border-[var(--status-success)]/30'
                 : t.type === 'error'
-                ? 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50'
+                ? 'bg-[var(--status-danger-bg)] text-[var(--status-danger-text)] border-[var(--status-danger)]/30'
                 : t.type === 'warning'
-                ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50'
-                : 'bg-slate-50 text-slate-800 border-slate-200 dark:bg-zinc-800/80 dark:text-zinc-300 dark:border-zinc-700/50'
+                ? 'bg-[var(--status-warning-bg)] text-[var(--status-warning-text)] border-[var(--status-warning)]/30'
+                : 'bg-[var(--bg-elevated)] text-[var(--text-primary)] border-[var(--border-subtle)]'
             }`}
           >
-            <div className="flex items-center gap-2">
-              {t.type === 'success' && <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />}
-              {t.type === 'error' && <AlertCircle size={16} className="text-rose-500 shrink-0" />}
-              {t.type === 'warning' && <AlertCircle size={16} className="text-amber-500 shrink-0" />}
-              {t.type === 'info' && <Info size={16} className="text-indigo-500 shrink-0" />}
+            <div className="flex items-center gap-2.5">
+              {t.type === 'success' && <CheckCircle2 size={16} className="text-[var(--status-success)] shrink-0" />}
+              {t.type === 'error' && <AlertCircle size={16} className="text-[var(--status-danger)] shrink-0" />}
+              {t.type === 'warning' && <AlertCircle size={16} className="text-[var(--status-warning)] shrink-0" />}
+              {t.type === 'info' && <Info size={16} className="text-[var(--brand-primary)] shrink-0" />}
               <span>{t.message}</span>
             </div>
             <button
               onClick={() => removeToast(t.id)}
-              className="ml-4 p-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 hover:text-slate-600 dark:text-zinc-500 dark:hover:text-zinc-300 shrink-0 focus:outline-none"
+              className="ml-4 p-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] shrink-0 focus:outline-none cursor-pointer"
             >
               <X size={14} />
             </button>

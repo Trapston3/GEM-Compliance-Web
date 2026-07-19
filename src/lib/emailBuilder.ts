@@ -21,13 +21,49 @@ export interface EmailBuilderUser {
 export interface EmailBuilderChecklistItem {
   id: number;
   label: string;
-  category: string; // 'submission' | 'acceptance'
+  category: string; // 'submission' | 'acceptance' | 'text_note'
   groupOrder: number;
   sortOrder: number;
 }
 
 export interface EmailBuilderStatusMap {
   [checklistItemId: number]: string;
+}
+
+/**
+ * Computes a 1-line non-editable summary explaining why a bidder is flagged with pending items
+ */
+export function getBidderFlaggedSummary(
+  checklistItems: EmailBuilderChecklistItem[],
+  statuses: EmailBuilderStatusMap
+): string {
+  let docsCount = 0;
+  let clauseCount = 0;
+
+  checklistItems.forEach((item) => {
+    const status = statuses[item.id];
+    if (item.category === 'submission' && status === 'not_submitted') {
+      docsCount++;
+    } else if (item.category === 'acceptance' && status === 'not_accepted') {
+      clauseCount++;
+    } else if (item.category === 'text_note' && status && status !== 'accepted' && status !== 'not_applicable' && status.trim() !== '') {
+      clauseCount++;
+    }
+  });
+
+  if (docsCount === 0 && clauseCount === 0) {
+    return 'All required documents submitted and all clauses accepted.';
+  }
+
+  const parts: string[] = [];
+  if (docsCount > 0) {
+    parts.push(`${docsCount} pending document${docsCount === 1 ? '' : 's'}`);
+  }
+  if (clauseCount > 0) {
+    parts.push(`${clauseCount} clause deviation${clauseCount === 1 ? '' : 's'} flagged`);
+  }
+
+  return parts.join(', ');
 }
 
 export function buildEmailBody(
@@ -62,6 +98,7 @@ export function buildEmailBody(
   });
 
   const subject = `Reply to Queries – ${tender.subjectLine || tender.name}`;
+  const summaryLine = getBidderFlaggedSummary(checklistItems, statuses);
 
   // Opening Block
   let body = `प्रिय महोदय/महोदया Dear Sir/Madam,\n\nयह ईमेल उक्त विषय के संदर्भ में आपकी सूचना/अवलोकन/आवश्यक कार्रवाई हेतु ।\nThis email is with reference to your bid against subject tender, kindly submit your replies to the following observations:\n\n`;
@@ -70,8 +107,6 @@ export function buildEmailBody(
     body += `All documents are submitted and accepted. No pending queries.\n\n`;
   } else {
     // Separate into sections
-    // Section A: Group 1 and Group 2 (submission)
-    // Section B: Group 3 (acceptance)
     const sectionAItems = pendingItems.filter(item => item.groupOrder === 1 || item.groupOrder === 2);
     const sectionBItems = pendingItems.filter(item => item.groupOrder === 3);
 
@@ -82,7 +117,6 @@ export function buildEmailBody(
       body += `A) The following documents are not submitted/partially submitted in your offer:\n`;
       
       for (const item of sectionAItems) {
-        // If it is EMD (Group 2) and pending, insert exemption note first
         if (item.groupOrder === 2) {
           body += `\nNote: Bidders registered as Micro & Small Enterprises (MSE) with NSIC/Udyam are exempt from EMD submission; such bidders must instead submit valid MSE proof documents.\n`;
         }
@@ -125,5 +159,6 @@ export function buildEmailBody(
   return {
     subject,
     body,
+    summaryLine,
   };
 }
