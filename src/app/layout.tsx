@@ -16,7 +16,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
-      <body className="h-full overflow-hidden bg-[var(--mrpl-paper-50)] font-sans text-[var(--mrpl-ink-950)] antialiased transition-colors duration-200">
+      <body className="h-full overflow-hidden bg-[var(--bg-app)] font-sans text-[var(--text-primary)] antialiased transition-colors duration-200">
         <SessionProvider>
           <ThemeProvider>
             <ToastProvider>

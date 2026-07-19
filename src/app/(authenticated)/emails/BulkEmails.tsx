@@ -304,7 +304,7 @@ export default function BulkEmails({ tender, bidders, checklistItems, currentUse
             <div className="flex-1 flex flex-col space-y-4 h-full min-h-0">
               
               {/* Flagged Item Summary Header Line */}
-              <div className="p-3 rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] border border-[var(--border-subtle)] flex items-center justify-between gap-3 text-xs">
+              <div className="p-3 rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] border border-[var(--border-subtle)] flex items-center justify-between gap-3 text-xs shrink-0">
                 <div className="flex items-center gap-2 font-semibold text-[var(--text-primary)]">
                   <Info size={16} className="text-[var(--brand-primary)] shrink-0" />
                   <span>Flagged Observations: <strong>{activeDraft.summaryLine}</strong></span>
@@ -314,7 +314,7 @@ export default function BulkEmails({ tender, bidders, checklistItems, currentUse
 
               {/* Warning Message if Recently Drafted */}
               {isRecentlyDraftedSent && (
-                <div className="p-3 rounded-[var(--radius-sm)] bg-[var(--status-warning-bg)] border border-[var(--status-warning)]/30 text-[var(--status-warning-text)] text-xs font-semibold flex items-center justify-between gap-3">
+                <div className="p-3 rounded-[var(--radius-sm)] bg-[var(--status-warning-bg)] border border-[var(--status-warning)]/30 text-[var(--status-warning-text)] text-xs font-semibold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0">
                   <div className="flex items-center gap-2">
                     <AlertTriangle size={16} className="shrink-0" />
                     <span>Already drafted/sent on {new Date(activeBidder.lastDraftedSentAt!).toLocaleDateString()} by {activeBidder.lastDraftedSentByName || 'Admin'}.</span>
@@ -344,7 +344,7 @@ export default function BulkEmails({ tender, bidders, checklistItems, currentUse
                 <textarea
                   value={editedBody}
                   onChange={(e) => setEditedBody(e.target.value)}
-                  className="w-full flex-1 text-xs p-3.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-[var(--text-primary)] font-mono outline-none transition-colors focus:border-[var(--brand-primary)] leading-relaxed overflow-y-auto resize-y"
+                  className="w-full min-h-[180px] sm:min-h-[240px] flex-1 text-xs p-3.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-[var(--text-primary)] font-mono outline-none transition-colors focus:border-[var(--brand-primary)] leading-relaxed overflow-y-auto resize-y"
                 />
               </div>
 

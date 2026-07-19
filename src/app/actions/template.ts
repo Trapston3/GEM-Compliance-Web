@@ -39,9 +39,15 @@ export async function createChecklistTemplate(data: { name: string; description:
   
   const validated = TemplateInputSchema.parse({ name: data.name, description: data.description });
 
-  // If new template is marked default, un-default existing default templates
+  // If new template is marked default, version/archive existing default template
   if (data.isDefault) {
-    await db.update(checklistTemplates).set({ isDefault: false }).where(eq(checklistTemplates.isDefault, true));
+    const [existingDefault] = await db.select().from(checklistTemplates).where(eq(checklistTemplates.isDefault, true)).limit(1);
+    if (existingDefault) {
+      const timestamp = new Date().toISOString().split('T')[0];
+      const archivedName = `${existingDefault.name} (Archived ${timestamp})`;
+      await db.update(checklistTemplates).set({ name: archivedName, isDefault: false, updatedAt: new Date() }).where(eq(checklistTemplates.id, existingDefault.id));
+      await logActivity('template.version_archived', { oldId: existingDefault.id, archivedName }, undefined);
+    }
   }
 
   const [template] = await db.insert(checklistTemplates).values({

@@ -1,10 +1,10 @@
 'use server';
 
 import { auth } from '@/auth';
-import { db, checklistItems, tenders, users, checklistTemplateItems } from '@/db';
+import { db, checklistItems, tenders, users, checklistTemplateItems, bidders as biddersTable } from '@/db';
 import { assertTenderAccess, getVisibleTenders } from '@/lib/tenderAccess';
 import { logActivity } from '@/lib/auditLog';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
@@ -114,4 +114,50 @@ export async function reassignTenderOwner(tenderId: number, newOwnerId: number) 
   await logActivity('admin.reassign_tender_owner', { oldOwnerId: tender.ownerId, newOwnerId, newOwnerName: newOwner.nameEn }, tenderId);
   revalidatePath('/admin'); revalidatePath('/tenders');
   return { success: true };
+}
+
+export async function searchGlobalIndex(query: string) {
+  const session = await requireSession();
+  const visibleTenders = await getVisibleTenders(session);
+  const visibleTenderIds = visibleTenders.map(t => t.id);
+
+  if (!query.trim()) return { tenders: [], bidders: [] };
+  const q = query.toLowerCase().trim();
+
+  // 1. Filter Tenders
+  const matchingTenders = visibleTenders.filter(t => 
+    t.name.toLowerCase().includes(q) || (t.subjectLine && t.subjectLine.toLowerCase().includes(q))
+  ).map(t => ({
+    id: t.id,
+    name: t.name,
+    subjectLine: t.subjectLine,
+  }));
+
+  // 2. Filter Bidders
+  if (visibleTenderIds.length === 0) return { tenders: matchingTenders.slice(0, 8), bidders: [] };
+
+  const allBidders = await db.select({
+    id: biddersTable.id,
+    name: biddersTable.name,
+    contactPerson: biddersTable.contactPerson,
+    email: biddersTable.email,
+    tenderId: biddersTable.tenderId,
+  }).from(biddersTable).where(inArray(biddersTable.tenderId, visibleTenderIds));
+
+  const tenderMap = new Map(visibleTenders.map(t => [t.id, t.name]));
+
+  const matchingBidders = allBidders.filter(b => 
+    b.name.toLowerCase().includes(q) ||
+    b.contactPerson.toLowerCase().includes(q) ||
+    b.email.toLowerCase().includes(q)
+  ).map(b => ({
+    id: b.id,
+    name: b.name,
+    contactPerson: b.contactPerson,
+    email: b.email,
+    tenderId: b.tenderId,
+    tenderName: tenderMap.get(b.tenderId) || `Tender #${b.tenderId}`,
+  }));
+
+  return { tenders: matchingTenders.slice(0, 8), bidders: matchingBidders.slice(0, 10) };
 }

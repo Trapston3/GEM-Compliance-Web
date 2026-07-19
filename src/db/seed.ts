@@ -210,7 +210,7 @@ async function seed() {
     // 4. Seed Checklist Templates
     console.log('Seeding checklist templates...');
     const [template] = await db.insert(schema.checklistTemplates).values({
-      name: "Standard MRPL Checklist",
+      name: "Standard Master Checklist",
       description: "Standard compliance verification checklist for materials procurement",
     }).returning();
 

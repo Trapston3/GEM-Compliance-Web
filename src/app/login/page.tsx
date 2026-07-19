@@ -59,7 +59,7 @@ export default function LoginPage() {
             <FileText size={28} />
           </div>
           <h2 className="text-xl font-extrabold text-[var(--text-primary)]">
-            Materials Department
+            Queries & Compliance
           </h2>
           <p className="text-xs text-[var(--text-muted)]">
             Tender Compliance Tracker Login
@@ -80,7 +80,7 @@ export default function LoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="email@mrpl.co.in"
+            placeholder="user@example.com"
           />
 
           <div className="space-y-1 relative">

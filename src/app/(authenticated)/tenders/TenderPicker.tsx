@@ -241,7 +241,7 @@ export default function TenderPicker({
         <form onSubmit={handleSubmit} className="space-y-5">
           <Input
             label="Tender Name / Reference Number"
-            placeholder="e.g. MRPL/CR/2026/045"
+            placeholder="e.g. CR/2026/045"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -249,7 +249,7 @@ export default function TenderPicker({
 
           <Textarea
             label="Email Subject Line (Optional)"
-            placeholder="e.g. Compliance Queries for Tender MRPL/CR/2026/045"
+            placeholder="e.g. Compliance Queries for Tender CR/2026/045"
             rows={2}
             value={subjectLine}
             onChange={(e) => setSubjectLine(e.target.value)}
@@ -326,7 +326,7 @@ export default function TenderPicker({
               {sourceType === 'master' && (
                 <div className="space-y-1">
                   <p className="text-xs font-semibold text-[var(--text-primary)]">
-                    Default Master Profile: <strong>{defaultTemplate ? defaultTemplate.name : 'Standard MRPL Checklist'}</strong>
+                    Default Master Profile: <strong>{defaultTemplate ? defaultTemplate.name : 'Standard Master Checklist'}</strong>
                   </p>
                   <p className="text-xs text-[var(--text-muted)]">
                     {defaultTemplate?.description || 'Pre-populates standard technical submissions, EMD guarantees, and commercial clauses.'}

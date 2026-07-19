@@ -495,7 +495,7 @@ export default function Dashboard({ view, tender, bidders: initialBidders, check
             </div>
             <div className="flex items-center gap-2">
               <Button variant="secondary" onClick={() => setIsImporting(true)}>
-                <Upload size={16} /> Import Bidders
+                <Download size={16} /> Import Bidders
               </Button>
               <Button onClick={openAddModal}>
                 <Plus size={16} /> Add Single Bidder
@@ -573,10 +573,10 @@ export default function Dashboard({ view, tender, bidders: initialBidders, check
             <h3 className="font-bold text-base text-[var(--text-primary)]">Compliance Verification Matrix</h3>
             <div className="flex items-center gap-2">
               <Button variant="secondary" onClick={() => setIsImporting(true)}>
-                <Upload size={16} /> Import Bidders
+                <Download size={16} /> Import Bidders
               </Button>
               <Button variant="secondary" onClick={downloadExcel}>
-                <Download size={16} /> Export Excel
+                <Upload size={16} /> Export Excel
               </Button>
             </div>
           </div>

@@ -30,7 +30,7 @@ export default async function AuthenticatedLayout({
   };
 
   return (
-    <div className="flex h-[100dvh] w-screen overflow-hidden bg-[var(--mrpl-paper-50)] text-[var(--mrpl-ink-950)] transition-colors duration-200">
+    <div className="flex h-[100dvh] w-screen overflow-hidden bg-[var(--bg-app)] text-[var(--text-primary)] transition-colors duration-200">
       <Sidebar tender={null} currentUser={currentUser} />
       <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
         {children}

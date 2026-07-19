@@ -14,6 +14,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   variant?: ButtonVariant;
   size?: ButtonSize;
   isLoading?: boolean;
+  buttonState?: 'idle' | 'loading' | 'success';
   children: React.ReactNode;
 }
 
@@ -22,11 +23,12 @@ export function Button({
   variant = 'primary',
   size = 'md',
   isLoading = false,
+  buttonState = 'idle',
   className = '',
   disabled,
   ...props
 }: ButtonProps) {
-  const baseClasses = 'inline-flex items-center justify-center gap-2 font-semibold transition-colors rounded-[var(--radius-sm)] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 select-none';
+  const baseClasses = 'inline-flex items-center justify-center gap-2 font-semibold transition-all duration-200 rounded-[var(--radius-sm)] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 select-none';
 
   const sizeClasses: Record<ButtonSize, string> = {
     sm: 'min-h-9 px-3 text-xs',
@@ -42,13 +44,19 @@ export function Button({
     danger: 'bg-[var(--status-danger-bg)] text-[var(--status-danger-text)] border border-[var(--status-danger)]/30 hover:bg-[var(--status-danger)]/15',
   };
 
+  const isActuallyLoading = isLoading || buttonState === 'loading';
+  const isSuccess = buttonState === 'success';
+
   return (
     <button
       {...props}
-      disabled={disabled || isLoading}
-      className={`${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${className}`}
+      disabled={disabled || isActuallyLoading}
+      className={`${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${
+        isSuccess ? 'bg-[var(--status-success-bg)] text-[var(--status-success-text)] border border-[var(--status-success)]/30' : ''
+      } ${className}`}
     >
-      {isLoading && <Loader2 size={size === 'sm' ? 14 : 16} className="animate-spin" />}
+      {isActuallyLoading && <Loader2 size={size === 'sm' ? 14 : 16} className="animate-spin text-current shrink-0" />}
+      {isSuccess && <Check size={size === 'sm' ? 14 : 16} className="text-[var(--status-success-text)] shrink-0 animate-in zoom-in-50" />}
       {children}
     </button>
   );
