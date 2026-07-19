@@ -1,7 +1,7 @@
 'use server';
 
 import { db, checklistTemplates, checklistTemplateItems } from '@/db';
-import { eq } from 'drizzle-orm';
+import { eq, desc, asc } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -17,7 +17,7 @@ export async function getChecklistTemplates() {
   const session = await auth();
   if (!session?.user) throw new Error('Unauthorized');
   
-  return await db.select().from(checklistTemplates).orderBy(checklistTemplates.isDefault, checklistTemplates.name);
+  return await db.select().from(checklistTemplates).orderBy(desc(checklistTemplates.isDefault), asc(checklistTemplates.name));
 }
 
 export async function getChecklistTemplate(id: number) {
