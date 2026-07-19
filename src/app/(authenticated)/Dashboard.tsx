@@ -608,25 +608,83 @@ export default function Dashboard({ view, tender, bidders: initialBidders, check
                       return (
                         <td key={b.id} className="p-2 text-center border-r border-[var(--border-subtle)]">
                           {item.category === 'submission' ? (
-                            <select
-                              value={currentStatus}
-                              onChange={(e) => handleCellStatusChange(b.id, item.id, e.target.value)}
-                              className="p-1 rounded text-xs font-semibold cursor-pointer border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-primary)]"
-                            >
-                              <option value="submitted">Submitted</option>
-                              <option value="not_submitted">Pending</option>
-                              <option value="not_applicable">N/A</option>
-                            </select>
+                            <div className="inline-flex rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] p-0.5 border border-[var(--border-subtle)] select-none">
+                              <button
+                                type="button"
+                                onClick={() => handleCellStatusChange(b.id, item.id, 'submitted')}
+                                className={`px-2 py-1 text-[11px] font-bold rounded transition-all cursor-pointer ${
+                                  currentStatus === 'submitted'
+                                    ? 'bg-[var(--status-success-bg)] text-[var(--status-success-text)] shadow-xs border border-[var(--status-success)]/30'
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                                }`}
+                                title="Submitted"
+                              >
+                                Sub
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCellStatusChange(b.id, item.id, 'not_submitted')}
+                                className={`px-2 py-1 text-[11px] font-bold rounded transition-all cursor-pointer ${
+                                  currentStatus === 'not_submitted' || !currentStatus
+                                    ? 'bg-[var(--status-warning-bg)] text-[var(--status-warning-text)] shadow-xs border border-[var(--status-warning)]/30'
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                                }`}
+                                title="Pending"
+                              >
+                                Pen
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCellStatusChange(b.id, item.id, 'not_applicable')}
+                                className={`px-2 py-1 text-[11px] font-bold rounded transition-all cursor-pointer ${
+                                  currentStatus === 'not_applicable'
+                                    ? 'bg-[var(--status-neutral-bg)] text-[var(--status-neutral-text)] shadow-xs border border-[var(--border-subtle)]'
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                                }`}
+                                title="Not Applicable"
+                              >
+                                N/A
+                              </button>
+                            </div>
                           ) : item.category === 'acceptance' ? (
-                            <select
-                              value={currentStatus}
-                              onChange={(e) => handleCellStatusChange(b.id, item.id, e.target.value)}
-                              className="p-1 rounded text-xs font-semibold cursor-pointer border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-primary)]"
-                            >
-                              <option value="accepted">Accepted</option>
-                              <option value="not_accepted">Not Accepted</option>
-                              <option value="not_applicable">N/A</option>
-                            </select>
+                            <div className="inline-flex rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] p-0.5 border border-[var(--border-subtle)] select-none">
+                              <button
+                                type="button"
+                                onClick={() => handleCellStatusChange(b.id, item.id, 'accepted')}
+                                className={`px-2 py-1 text-[11px] font-bold rounded transition-all cursor-pointer ${
+                                  currentStatus === 'accepted'
+                                    ? 'bg-[var(--status-success-bg)] text-[var(--status-success-text)] shadow-xs border border-[var(--status-success)]/30'
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                                }`}
+                                title="Accepted"
+                              >
+                                Acc
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCellStatusChange(b.id, item.id, 'not_accepted')}
+                                className={`px-2 py-1 text-[11px] font-bold rounded transition-all cursor-pointer ${
+                                  currentStatus === 'not_accepted' || !currentStatus
+                                    ? 'bg-[var(--status-danger-bg)] text-[var(--status-danger-text)] shadow-xs border border-[var(--status-danger)]/30'
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                                }`}
+                                title="Not Accepted / Deviation"
+                              >
+                                Dev
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCellStatusChange(b.id, item.id, 'not_applicable')}
+                                className={`px-2 py-1 text-[11px] font-bold rounded transition-all cursor-pointer ${
+                                  currentStatus === 'not_applicable'
+                                    ? 'bg-[var(--status-neutral-bg)] text-[var(--status-neutral-text)] shadow-xs border border-[var(--border-subtle)]'
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                                }`}
+                                title="Not Applicable"
+                              >
+                                N/A
+                              </button>
+                            </div>
                           ) : (
                             <DeviationTextInput
                               bidderId={b.id}
