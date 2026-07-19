@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTheme } from './ThemeProvider';
-import { Sun, Moon, ArrowLeftRight, Search, Menu, X, Keyboard } from 'lucide-react';
+import { Sun, Moon, ArrowLeftRight, Search, Keyboard } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import QuickSearchModal from './QuickSearchModal';
 import ShortcutsModal from './ShortcutsModal';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface HeaderProps {
   title: string;
@@ -23,7 +22,6 @@ export default function Header({ title, currentUser, tender }: HeaderProps) {
   const pathname = usePathname();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Global Keyboard listener for Ctrl+K and Ctrl+/ with Focus Guard
   useEffect(() => {
@@ -42,12 +40,11 @@ export default function Header({ title, currentUser, tender }: HeaderProps) {
       } else if (e.key === 'Escape') {
         if (isSearchOpen) setIsSearchOpen(false);
         if (isShortcutsOpen) setIsShortcutsOpen(false);
-        if (isMobileMenuOpen) setIsMobileMenuOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSearchOpen, isShortcutsOpen, isMobileMenuOpen]);
+  }, [isSearchOpen, isShortcutsOpen]);
 
   const activeSection = tender
     ? pathname.endsWith('/overview') ? 'Overview'
@@ -76,12 +73,9 @@ export default function Header({ title, currentUser, tender }: HeaderProps) {
             {title}
           </h2>
           {tender && (
-            <Link
-              href={`/tenders/${tender.id}`}
-              className="mt-0.5 block max-w-[52vw] truncate text-xs font-semibold text-[var(--text-muted)] sm:hidden hover:text-[var(--brand-primary)]"
-            >
-              {tender.name} · {activeSection}
-            </Link>
+            <span className="mt-0.5 block max-w-[52vw] truncate text-xs font-semibold text-[var(--text-muted)] sm:hidden">
+              Tender: {tender.name}
+            </span>
           )}
         </div>
 
@@ -121,14 +115,15 @@ export default function Header({ title, currentUser, tender }: HeaderProps) {
             </div>
           )}
 
-          {/* Mobile Quick Search Button (Touch Trigger for Mobile) */}
+          {/* Universal Quick Search Button (Visible at ALL Breakpoints, NO Ctrl+K text badge) */}
           <button
             onClick={() => setIsSearchOpen(true)}
             aria-label="Search tenders and bidders"
-            className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border-subtle)] text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] sm:hidden"
-            title="Search Tenders & Bidders"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-subtle)] px-3.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:border-[var(--brand-primary)]/40 hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+            title="Search Tenders & Bidders (Ctrl+K)"
           >
-            <Search size={18} className="text-[var(--brand-primary)]" />
+            <Search size={16} className="text-[var(--brand-primary)] shrink-0" />
+            <span className="hidden sm:inline text-xs">Search...</span>
           </button>
 
           {/* Shortcuts Cheat Sheet Button */}
@@ -149,61 +144,33 @@ export default function Header({ title, currentUser, tender }: HeaderProps) {
           >
             {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
           </button>
-
-          {/* Mobile Hamburger Button for Sub-Nav */}
-          {tender && (
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              aria-label="Toggle mobile navigation menu"
-              className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border-subtle)] text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] sm:hidden"
-            >
-              {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Mobile Hamburger Sub-Nav Drawer */}
-      <AnimatePresence>
-        {isMobileMenuOpen && tender && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden border-t border-[var(--border-subtle)] bg-[var(--bg-elevated)] pt-3 pb-4 px-2 mt-3 sm:hidden"
-          >
-            <div className="flex items-center justify-between mb-3 px-2">
-              <span className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">
-                Tender Sections ({tender.name})
-              </span>
+      {/* Option C: Horizontal Scrollable Sub-Header Section Tab Pill Bar (Mobile Viewports Only) */}
+      {tender && (
+        <nav
+          aria-label="Mobile tender section navigation"
+          className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 border-t border-[var(--border-subtle)] pt-2.5 sm:hidden no-scrollbar"
+        >
+          {sectionLinks.map((link) => {
+            const isActive = activeSection === link.label;
+            return (
               <Link
-                href="/tenders"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="inline-flex items-center gap-1 text-xs font-bold text-[var(--brand-primary)]"
+                key={link.label}
+                href={link.href}
+                className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold transition-all shrink-0 border ${
+                  isActive
+                    ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)] shadow-xs'
+                    : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)]'
+                }`}
               >
-                <ArrowLeftRight size={12} /> Switch Tender
+                {link.label}
               </Link>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {sectionLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`p-2.5 rounded-[var(--radius-sm)] text-xs font-bold text-center border transition-all ${
-                    activeSection === link.label
-                      ? 'bg-[var(--brand-primary)]/10 border-[var(--brand-primary)] text-[var(--brand-primary)] shadow-xs'
-                      : 'bg-[var(--bg-surface)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            );
+          })}
+        </nav>
+      )}
 
       {/* Global Quick-Jump Modal */}
       <QuickSearchModal

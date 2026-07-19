@@ -171,30 +171,6 @@ export default function Sidebar({ tender, currentUser }: SidebarProps) {
             </button>
           </div>
         )}
-
-        {/* Mobile Bottom Navigation Bar */}
-        <nav
-          aria-label="Mobile navigation"
-          className="fixed inset-x-0 bottom-0 z-30 grid border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] p-1 shadow-md md:hidden"
-          style={{ gridTemplateColumns: `repeat(${mobileItems.length}, minmax(0, 1fr))` }}
-        >
-          {mobileItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsMobileOpen(false)}
-                aria-current={isActive ? 'page' : undefined}
-                className={`flex min-h-11 items-center justify-center rounded-[var(--radius-sm)] px-1 text-[11px] font-semibold ${
-                  isActive ? 'bg-[var(--brand-primary)]/10 text-[var(--brand-primary)]' : 'text-[var(--text-muted)]'
-                }`}
-              >
-                {item.name}
-              </Link>
-            );
-          })}
-        </nav>
       </aside>
     </>
   );
