@@ -1,12 +1,21 @@
 import type { NextAuthConfig } from 'next-auth';
 
+/**
+ * NextAuth v5 Configuration Ground Rules:
+ * 1. `trustHost: true` MUST BE PRESERVED AT ALL TIMES.
+ *    This allows NextAuth to automatically infer request origin (host + port) dynamically.
+ * 2. NEVER hardcode `AUTH_URL` or `NEXTAUTH_URL` in `.env.local` or `.env`.
+ *    Hardcoded URLs break dynamic dev port assignment (e.g., localhost:3001) and Vercel Preview URLs.
+ * 3. Edge Route Protection MUST be re-exported in `src/middleware.ts` (Next.js Edge Middleware entry point).
+ */
 export const authConfig = {
   trustHost: true,
   pages: {
     signIn: '/login',
   },
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
+    authorized() {
+      // Centralized session authorization is enforced in src/proxy.ts / src/middleware.ts
       return true;
     },
     jwt({ token, user, trigger, session }) {

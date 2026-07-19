@@ -803,9 +803,31 @@ export default function AdminDashboard({
 
       {/* CREATE TEMPLATE MODAL */}
       <Dialog isOpen={isAddingTemplate} onClose={() => setIsAddingTemplate(false)} title="Create Master Checklist Template" size="lg">
-        <form onSubmit={handleCreateTemplateSubmit} className="space-y-5">
-          <Input label="Template Profile Name" required value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="e.g. Standard MRPL Checklist (v2)" />
-          <Input label="Description (Optional)" value={templateDescription} onChange={(e) => setTemplateDescription(e.target.value)} />
+        <div className="space-y-5">
+          <Input 
+            label="Template Profile Name" 
+            required 
+            value={templateName} 
+            onChange={(e) => setTemplateName(e.target.value)} 
+            placeholder="e.g. Standard Master Checklist (v2)" 
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleCreateTemplateSubmit(e);
+              }
+            }}
+          />
+          <Input 
+            label="Description (Optional)" 
+            value={templateDescription} 
+            onChange={(e) => setTemplateDescription(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleCreateTemplateSubmit(e);
+              }
+            }}
+          />
 
           <div className="pt-2">
             <ChecklistEditor
@@ -818,16 +840,37 @@ export default function AdminDashboard({
 
           <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
             <Button type="button" variant="secondary" onClick={() => setIsAddingTemplate(false)}>Cancel</Button>
-            <Button type="submit" isLoading={isSaving}>Save Template Profile</Button>
+            <Button type="button" isLoading={isSaving} onClick={handleCreateTemplateSubmit}>Save Template Profile</Button>
           </div>
-        </form>
+        </div>
       </Dialog>
 
       {/* EDIT TEMPLATE MODAL */}
       <Dialog isOpen={editingTemplate !== null} onClose={() => setEditingTemplate(null)} title="Edit Master Checklist Template" size="lg">
-        <form onSubmit={handleEditTemplateSubmit} className="space-y-5">
-          <Input label="Template Profile Name" required value={templateName} onChange={(e) => setTemplateName(e.target.value)} />
-          <Input label="Description" value={templateDescription} onChange={(e) => setTemplateDescription(e.target.value)} />
+        <div className="space-y-5">
+          <Input 
+            label="Template Profile Name" 
+            required 
+            value={templateName} 
+            onChange={(e) => setTemplateName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleEditTemplateSubmit(e);
+              }
+            }}
+          />
+          <Input 
+            label="Description" 
+            value={templateDescription} 
+            onChange={(e) => setTemplateDescription(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleEditTemplateSubmit(e);
+              }
+            }}
+          />
 
           <div className="pt-2">
             <ChecklistEditor
@@ -840,9 +883,9 @@ export default function AdminDashboard({
 
           <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
             <Button type="button" variant="secondary" onClick={() => setEditingTemplate(null)}>Cancel</Button>
-            <Button type="submit" isLoading={isSaving}>Save Changes</Button>
+            <Button type="button" isLoading={isSaving} onClick={handleEditTemplateSubmit}>Save Changes</Button>
           </div>
-        </form>
+        </div>
       </Dialog>
 
       {/* DELETE TEMPLATE MODAL */}

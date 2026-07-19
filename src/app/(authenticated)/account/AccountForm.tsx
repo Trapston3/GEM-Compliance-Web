@@ -124,7 +124,7 @@ export default function AccountForm({ user }: AccountFormProps) {
             </div>
             <div>
               <span className="text-[var(--text-muted)] block font-medium">Organization</span>
-              <span className="text-[var(--text-primary)] font-semibold">एमआरपीएल MRPL (मंगलूरु Mangaluru)</span>
+              <span className="text-[var(--text-primary)] font-semibold">Tender Compliance System</span>
             </div>
           </div>
         </Card>
