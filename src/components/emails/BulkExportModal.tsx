@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Download, FileArchive } from 'lucide-react';
+import { Download, FileArchive, FileText } from 'lucide-react';
 import { Dialog } from '@/components/ui/dialog';
 import { Button, Badge, Card } from '@/components/ui/primitives';
 import { useToast } from '@/components/ui/toast';
-import { downloadBulkEmlZip, EmlItem } from '@/lib/emlExport';
+import { downloadBulkEmlZip, downloadConsolidatedQuerySummary, EmlItem } from '@/lib/emlExport';
 
 interface BulkExportModalProps {
   isOpen: boolean;
@@ -16,15 +16,16 @@ interface BulkExportModalProps {
 
 export default function BulkExportModal({ isOpen, onClose, tenderName, drafts }: BulkExportModalProps) {
   const { toast } = useToast();
-  const [isExporting, setIsExporting] = useState(false);
+  const [isExportingZip, setIsExportingZip] = useState(false);
+  const [isExportingTxt, setIsExportingTxt] = useState(false);
 
-  const handleExport = async () => {
+  const handleExportZip = async () => {
     if (drafts.length === 0) {
       toast('No bidders with pending queries found to export.', 'error');
       return;
     }
 
-    setIsExporting(true);
+    setIsExportingZip(true);
     try {
       await downloadBulkEmlZip(drafts, tenderName);
       toast(`Exported ${drafts.length} .eml query drafts to ZIP archive!`, 'success');
@@ -32,23 +33,38 @@ export default function BulkExportModal({ isOpen, onClose, tenderName, drafts }:
     } catch (err: any) {
       toast(err.message || 'Failed to export .eml drafts', 'error');
     } finally {
-      setIsExporting(false);
+      setIsExportingZip(false);
+    }
+  };
+
+  const handleExportTxt = () => {
+    if (drafts.length === 0) {
+      toast('No bidders with pending queries found to export.', 'error');
+      return;
+    }
+
+    setIsExportingTxt(true);
+    try {
+      downloadConsolidatedQuerySummary(drafts, tenderName);
+      toast(`Exported consolidated queries summary (.txt) for ${drafts.length} bidders!`, 'success');
+      onClose();
+    } catch (err: any) {
+      toast(err.message || 'Failed to export queries summary', 'error');
+    } finally {
+      setIsExportingTxt(false);
     }
   };
 
   return (
-    <Dialog isOpen={isOpen} onClose={onClose} title="Bulk Export Compliance Query Drafts (.eml / .zip)" size="md">
+    <Dialog isOpen={isOpen} onClose={onClose} title="Bulk Export Compliance Query Drafts" size="md">
       <div className="space-y-5">
         <Card className="p-4 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] space-y-2">
           <div className="flex items-center gap-2 font-bold text-sm text-[var(--text-primary)]">
             <FileArchive size={18} className="text-[var(--brand-primary)]" />
-            <span>Universally Importable .EML Drafts</span>
+            <span>Export Options for Department Review & Dispatch</span>
           </div>
           <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-            Generates standard RFC 822 <code>.eml</code> files populated with recipient details, subject lines, and observation bullet points, packaged as a single <code>.zip</code> archive.
-          </p>
-          <p className="text-xs font-semibold text-[var(--text-secondary)]">
-            Compatible with HCL Verse / Notes, Microsoft Outlook, Thunderbird, and standard webmail clients.
+            Choose between individual <code>.eml</code> draft files (with <code>X-Unsent: 1</code> headers for HCL Notes / Outlook) packaged in a <code>.zip</code> archive, or a single consolidated <code>.txt</code> text summary containing all queries for all bidders.
           </p>
         </Card>
 
@@ -84,12 +100,15 @@ export default function BulkExportModal({ isOpen, onClose, tenderName, drafts }:
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
+        <div className="flex flex-col sm:flex-row justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]">
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleExport} isLoading={isExporting} disabled={drafts.length === 0}>
-            <Download size={16} /> Download .ZIP Archive ({drafts.length} .eml files)
+          <Button variant="secondary" onClick={handleExportTxt} isLoading={isExportingTxt} disabled={drafts.length === 0}>
+            <FileText size={16} /> Export Consolidated (.TXT)
+          </Button>
+          <Button onClick={handleExportZip} isLoading={isExportingZip} disabled={drafts.length === 0}>
+            <Download size={16} /> Export .EML (.ZIP Archive)
           </Button>
         </div>
       </div>

@@ -31,6 +31,28 @@ export interface EmailBuilderStatusMap {
 }
 
 /**
+ * USER-REQUESTED CONTENT SPECIFICATION:
+ * Determines if a checklist item label should be considered uppercase (dropping quote marks in email queries).
+ * Handles labels with allowed lowercase connector words like "or", "and", "of", "wrt", "for", "to", "in", "on", "with", "by", "as".
+ */
+export function isUppercaseLabel(label: string): boolean {
+  if (!label) return false;
+  // Replace allowed connector words with uppercase equivalent before checking case
+  const connectorRegex = /\b(or|and|of|wrt|for|to|in|on|with|by|as)\b/gi;
+  const normalized = label.replace(connectorRegex, (match) => match.toUpperCase());
+  return normalized === normalized.toUpperCase() && /[A-Z]/.test(normalized);
+}
+
+/**
+ * USER-REQUESTED CONTENT SPECIFICATION:
+ * Formats a checklist label for query text. Drops surrounding quotes if the label is uppercase
+ * (including uppercase labels with lowercase connector words), otherwise wraps in quotes.
+ */
+export function formatLabelForQuery(label: string): string {
+  return isUppercaseLabel(label) ? label : `"${label}"`;
+}
+
+/**
  * Computes a 1-line non-editable summary explaining why a bidder is flagged with pending items
  */
 export function getBidderFlaggedSummary(
@@ -117,11 +139,17 @@ export function buildEmailBody(
       body += `A) The following documents are not submitted/partially submitted in your offer:\n`;
       
       for (const item of sectionAItems) {
-        if (item.groupOrder === 2) {
-          body += `\nNote: Bidders registered as Micro & Small Enterprises (MSE) with NSIC/Udyam are exempt from EMD submission; such bidders must instead submit valid MSE proof documents.\n`;
+        const isEmd = item.groupOrder === 2 || item.label.trim().toUpperCase() === 'EMD' || item.label.toUpperCase().includes('EMD');
+        if (isEmd) {
+          /**
+           * USER-REQUESTED CONTENT SPECIFICATION:
+           * Replaces generic EMD query line and separate Note line with single combined MSE/EMD query line.
+           */
+          body += `${numberCounter}. Bidders registered as Micro & Small Enterprises (MSE) with NSIC/Udyam are exempt from EMD submission as specified in PPP-MSE policy; such bidders must instead submit valid MSE proof documents. Kindly submit the valid supporting documents otherwise your offer is liable for rejection.\n`;
+        } else {
+          const formattedLabel = formatLabelForQuery(item.label);
+          body += `${numberCounter}. You have not submitted ${formattedLabel}, kindly submit the same.\n`;
         }
-        
-        body += `${numberCounter}. You have not submitted "${item.label}", kindly submit the same.\n`;
         numberCounter++;
       }
       body += `\n`;
@@ -133,11 +161,13 @@ export function buildEmailBody(
       
       for (const item of sectionBItems) {
         const isCustomTextItem = item.category === 'text_note';
+        const formattedLabel = formatLabelForQuery(item.label);
+        
         if (isCustomTextItem) {
           const customDeviationText = statuses[item.id];
-          body += `${numberCounter}. Regarding "ANY OTHER DEVIATIONS": ${customDeviationText}\n`;
+          body += `${numberCounter}. Regarding ${formattedLabel}: ${customDeviationText}\n`;
         } else {
-          body += `${numberCounter}. You have not confirmed acceptance to the ${item.label} clause. Kindly accept the same as per tender terms and conditions without any deviation.\n`;
+          body += `${numberCounter}. You have not confirmed acceptance to the ${formattedLabel} clause. Kindly accept the same as per tender terms and conditions without any deviation.\n`;
         }
         numberCounter++;
       }
